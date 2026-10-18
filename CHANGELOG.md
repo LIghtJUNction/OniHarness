@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add an explicit experimental Steam-launched real-game workflow, optional
+  Unity rendering companion, bounded smoke steps and a read-only text spectator
+  sharing the AI's recorded map. Native fixtures remain game-free. See
+  `docs/runtime.md` for installation, evidence limits and compatibility checks.
+
 Add the `oni-harness` agent skill and an isolated continuous physics playground
 with state-driven actions, bounded observation, fresh per-run traces, exact
 repeat comparison, a self-contained HTML viewer and optional GIF/PNG rendering.

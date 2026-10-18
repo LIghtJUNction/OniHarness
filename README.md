@@ -1,10 +1,15 @@
 # OniHarness
 
-**Headless testing for Oxygen Not Included mods.**
+**ONI mod testing, with game-free fixtures and explicit real-game runs.**
 
-[简体中文](README_ZH.md) · [Architecture](docs/architecture.md) · [Supported capabilities](docs/capabilities.md)
+[简体中文](README_ZH.md) · [Real-game / text view](docs/runtime.md) · [Architecture](docs/architecture.md) · [Supported capabilities](docs/capabilities.md)
 
-OniHarness runs small, repeatable tests in isolated worker processes. It can drive
+For complete gameplay behavior, use the experimental [real-game workflow](docs/runtime.md):
+start ONI through Steam, preserve native simulation and optionally reduce Unity
+drawing. An optional text spectator displays the exact observations returned to
+the AI. Compatibility and performance need testing per game/save/mod combination.
+
+The original harness runs small, repeatable tests in isolated worker processes. It can drive
 the **real installed ONI native simulation library** without launching ONI,
 Steam, a Unity Player, a display server, or a colony save.
 

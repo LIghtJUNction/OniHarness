@@ -5,7 +5,11 @@ This is the original OniHarness project. Do not open issues/PRs against itself
 merely to satisfy AUL feedback duties. Check existing reports before reporting
 confirmed external upstream defects; preserve third-party terms and secrets.
 
-- Never launch ONI or Unity Player as a hidden fallback. Never use SteamCMD or publish Workshop content here.
+- Game-free and native fixture tests must never launch ONI/Unity as a fallback.
+- Real-game tests are a separate, explicit mode. Launch ONI through Steam only;
+  keep it paused for observations/actions and verify after short bounded steps.
+  Rendering controls must not replace simulation, AI, lifecycle or physics logic.
+- Never use SteamCMD or publish Workshop content here.
 - Use only the user's installed game files for authorized local native tests; no binary mirrors or downloads.
 - Never commit game DLLs/assets, decompiled implementation, credentials or saves.
 - Unknown native adapters fail explicitly. Do not advance hashes without protocol review and local verification.

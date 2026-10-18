@@ -19,6 +19,7 @@ def main():
     args = parser.parse_args()
     run("dotnet", "build", "OniHarness.slnx", "-c", "Release", "--nologo")
     run("dotnet", "run", "--project", "tests/OniHarness.Tests", "-c", "Release", "--no-build")
+    run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_runtime.py")
     cli = ["dotnet", "run", "--project", "src/OniHarness.Cli", "-c", "Release", "--no-build", "--"]
     run(*cli, "test", "--assembly", "examples/ModTests/bin/Release/net10.0/ModTests.dll", "--filter", "PolicyCanRunWithoutGameFiles")
     for project in ("Core", "Cli"):

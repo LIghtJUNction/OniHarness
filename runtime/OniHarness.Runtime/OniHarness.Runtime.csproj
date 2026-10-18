@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Optional in-game companion; deliberately outside the game-free solution. -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>OniHarness.Runtime</AssemblyName>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ManagedPath>$(OniGamePath)/OxygenNotIncluded_Data/Managed</ManagedPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <Reference Include="Assembly-CSharp" HintPath="$(ManagedPath)/Assembly-CSharp.dll" Private="false" />
+    <Reference Include="Assembly-CSharp-firstpass" HintPath="$(ManagedPath)/Assembly-CSharp-firstpass.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(ManagedPath)/0Harmony.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedPath)/UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="Newtonsoft.Json" HintPath="$(ManagedPath)/Newtonsoft.Json.dll" Private="false" />
+  </ItemGroup>
+  <Target Name="RequireInstalledGame" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(ManagedPath)/Assembly-CSharp.dll')" Text="Pass -p:OniGamePath=PATH to your installed ONI game." />
+  </Target>
+</Project>

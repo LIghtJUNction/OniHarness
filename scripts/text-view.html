@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>OniHarness · AI 视角</title>
+<style>
+body{margin:0;background:#11171b;color:#d8e4e8;font:15px system-ui}main{max-width:1240px;margin:auto;padding:24px}
+header{display:flex;align-items:center;gap:16px;flex-wrap:wrap}h1{font-size:24px;font-weight:550;margin:0}button{background:#21333e;color:inherit;border:1px solid #59727d;border-radius:6px;padding:7px 14px;cursor:pointer}
+.note,#stamp{color:#9db2bc}#intent{border-left:3px solid #76cbb6;padding:12px;background:#17242a}pre{font:16px/1.35 "Noto Sans Mono CJK SC","Sarasa Mono SC",monospace;white-space:pre;overflow:auto;background:#0b1115;padding:16px;border-radius:8px}details{margin:16px 0}#state{white-space:pre-wrap;font-size:13px}#error{color:#ffac93}
+</style>
+<main><header><h1>OniHarness · AI 视角</h1><button id="toggle">停止刷新</button><span id="stamp">等待真实游戏观测</span></header>
+<p class="note">这里显示 AI 记录的同一份文本地图，不读取截图。只在 AI 完成观测时更新；没有新观测时保留原图。</p>
+<p id="intent">等待动作记录</p><p id="error" role="status"></p><pre id="map">尚无观测</pre>
+<details open><summary>游戏返回的图例</summary><pre id="legend"></pre></details>
+<details open><summary>建筑与复制人</summary><pre id="objects"></pre></details>
+<details><summary>AI 收到的完整地图原文</summary><pre id="rawmap"></pre></details>
+<details><summary>原始状态与最近动作</summary><pre id="state"></pre></details></main>
+<script>
+let watching=true,lastStamp='';const el=id=>document.getElementById(id);
+function section(text,heading){const lines=text.split('\n'),start=lines.indexOf(heading);if(start<0)return '';let end=start+1;while(end<lines.length&&!lines[end].startsWith('## '))end++;return lines.slice(start+1,end).join('\n').trim();}
+el('toggle').onclick=()=>{watching=!watching;el('toggle').textContent=watching?'停止刷新':'继续刷新';};
+async function refresh(){
+ if(!watching||document.hidden)return;
+ try{
+  const response=await fetch('latest.json',{cache:'no-store'});if(!response.ok)throw Error('等待观测文件：HTTP '+response.status);
+  const observation=await response.json();
+  if(observation.capturedAt===lastStamp)return;lastStamp=observation.capturedAt;
+  const map=observation.map||{},rows=map.rows||[];
+  el('stamp').textContent='观测 '+new Date(observation.capturedAt).toLocaleString()+' · 周期 '+(observation.time?.cycle??'?')+' · '+(observation.paused?'已暂停':'暂停状态未知');
+  el('intent').textContent=observation.intent||'只读观测';
+  const raw=map.text||JSON.stringify(map,null,2);
+  el('rawmap').textContent=raw;
+  el('map').textContent=rows.length?rows.map(r=>String(r.y).padStart(4)+' │ '+r.p).join('\n'):(section(raw,'## Grid Map')||raw);
+  el('legend').textContent=Object.keys(map.legend||{}).length?Object.entries(map.legend).map(([k,v])=>k+'  '+v).join('\n'):(section(raw,'## Legend')||'使用原始地图中的游戏图例。');
+  el('objects').textContent=observation.dupes?.text||JSON.stringify(map.objects||[],null,2);
+  el('state').textContent=JSON.stringify({snapshot:observation.snapshot,lastAction:observation.lastAction},null,2);
+  el('error').textContent='';
+ }catch(error){el('error').textContent=error.message;}
+}
+refresh();setInterval(refresh,1000);
+</script></html>

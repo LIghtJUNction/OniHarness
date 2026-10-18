@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "verifiedUtc": "2026-10-18T23:46:55.456591+00:00",
+  "platform": "Linux x64; native Steam ONI; OpenGLCore; Intel i915 DRM render-engine counter",
+  "unity": "6000.3.5f2",
+  "runtimeSourceCommit": "26946175efb764d033d0ed45fef0b2853bf0c36b",
+  "companionSourceSha256": "4ea762a3e5b7d1156809207f8ed92163ce75432173a7a153ce5b81bac7d5aba9",
+  "installedCompanionSha256": "ff6f64a97c9b093f3db7b005b1e7510b1578e5025249f9e92729d877a89606e3",
+  "installedGameAssemblySha256": "6db652990ad1038e86b3493ed43004e12bfd61e62a4be60c787a9a9b9ac52ee1",
+  "mcpSourceCommit": "dc78d044776c09465eb97ef3e429976389afcc1d",
+  "loadedDuplicants": 3,
+  "saveCopyLoaded": true,
+  "originalSaveHashUnchanged": true,
+  "duplicantsWithObservedCellChange": 1,
+  "firstStep": {
+    "wallSeconds": 5.0,
+    "simulationSecondsAdvanced": 4.91552734375,
+    "pausedAfter": true
+  },
+  "blockedNativePause": {
+    "exit": 1,
+    "treatedAsFailure": true
+  },
+  "clientLoss": {
+    "clientExit": -9,
+    "pausedAfterDeadline": true,
+    "clockStableForSeconds": 2,
+    "gamePidUnchanged": true
+  },
+  "recoveryStep": {
+    "simulationSecondsAdvanced": 1.0997314453125,
+    "releasedNativePause": false,
+    "pausedAfter": true
+  },
+  "rendering": {
+    "scenario": "same paused loaded save; ABBA normal/reduced/reduced/normal",
+    "settlingSeconds": 1.5,
+    "rows": [
+      {
+        "mode": "normal",
+        "seconds": 4.053636272001313,
+        "cpuSeconds": 6.3700000000000045,
+        "gpuRenderSeconds": 1.608767784,
+        "cameraFrames": 94,
+        "updateFrames": 94,
+        "renderInterval": 1
+      },
+      {
+        "mode": "reduced",
+        "seconds": 4.031490672001382,
+        "cpuSeconds": 5.140000000000015,
+        "gpuRenderSeconds": 0.06248034,
+        "cameraFrames": 2,
+        "updateFrames": 115,
+        "renderInterval": 60
+      },
+      {
+        "mode": "reduced",
+        "seconds": 4.036523517002934,
+        "cpuSeconds": 5.469999999999999,
+        "gpuRenderSeconds": 0.061859772,
+        "cameraFrames": 2,
+        "updateFrames": 120,
+        "renderInterval": 60
+      },
+      {
+        "mode": "normal",
+        "seconds": 4.042175294001936,
+        "cpuSeconds": 6.659999999999997,
+        "gpuRenderSeconds": 1.610988168,
+        "cameraFrames": 92,
+        "updateFrames": 92,
+        "renderInterval": 1
+      }
+    ],
+    "rates": {
+      "normal": {
+        "cpuSecondsPerWallSecond": 1.6094742193255702,
+        "gpuRenderSecondsPerWallSecond": 0.39770638505480105
+      },
+      "reduced": {
+        "cpuSecondsPerWallSecond": 1.3150695761616413,
+        "gpuRenderSecondsPerWallSecond": 0.015411489009211196
+      }
+    },
+    "cpuTimeRateReduction": 0.182919763254919,
+    "gpuRenderTimeRateReduction": 0.9612490782437713,
+    "limits": "Paused workload only; short samples. Camera counters have 1s telemetry granularity. No active-colony FPS, simulation speedup, memory saving or universal compatibility claim. GPU counter is null when unavailable."
+  },
+  "spectator": {
+    "browser": "headless Chromium in isolated profile",
+    "rawMapIdentical": true,
+    "nativeGridShown": true,
+    "dupesShown": true,
+    "privateFileGetDenied": true,
+    "privateFileHeadDenied": true,
+    "consoleUiError": ""
+  },
+  "notEstablished": [
+    "complete game feature coverage",
+    "all mod compatibility",
+    "active-colony performance speedup",
+    "memory savings",
+    "working no-graphics colony"
+  ]
+}
