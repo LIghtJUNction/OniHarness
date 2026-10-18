@@ -1,0 +1,17 @@
+**/bin/
+**/obj/
+artifacts/
+.local/
+.env
+*.user
+*.suo
+*.dll
+*.so
+*.dylib
+*.exe
+*.sav
+*.pdb
+*.nupkg
+*.snupkg
+core
+core.*

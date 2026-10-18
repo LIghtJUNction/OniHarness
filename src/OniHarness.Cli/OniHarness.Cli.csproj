@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>oniharness</ToolCommandName>
+    <PackageId>OniHarness.Cli</PackageId>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../OniHarness.Core/OniHarness.Core.csproj" /></ItemGroup>
+</Project>

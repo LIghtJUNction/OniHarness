@@ -1,0 +1,6 @@
+schema_version = 1
+license = "LicenseRef-AUL-1.0-draft.1"
+repository = "https://github.com/LIghtJUNction/OniHarness"
+mode = "independent"
+upstream = "https://github.com/LIghtJUNction/OniHarness"
+# Original project. This declaration does not elect independence for later forks.

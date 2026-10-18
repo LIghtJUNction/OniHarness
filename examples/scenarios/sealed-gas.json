@@ -1,0 +1,12 @@
+{
+  "name": "Sealed gas conserves mass",
+  "width": 16,
+  "height": 16,
+  "seed": 42,
+  "steps": 50,
+  "fill": { "element": "Oxygen", "mass": 1, "temperature": 300 },
+  "assertions": [
+    { "kind": "massConserved", "absoluteTolerance": 0.01 },
+    { "kind": "cellTemperature", "x": 8, "y": 8, "min": 299.99, "max": 300.01 }
+  ]
+}

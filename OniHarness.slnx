@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="src/OniHarness.Core/OniHarness.Core.csproj" />
+  <Project Path="src/OniHarness.Cli/OniHarness.Cli.csproj" />
+  <Project Path="tests/OniHarness.Tests/OniHarness.Tests.csproj" />
+  <Project Path="examples/ModTests/ModTests.csproj" />
+  <Project Path="tests/RunnerFixtures/RunnerFixtures.csproj" />
+</Solution>

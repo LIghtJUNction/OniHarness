@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 1,
+  "harnessVersion": "0.1.0",
+  "recordedUtc": "2026-10-18T22:26:02.369847+00:00",
+  "sourceTreeSha256": "fddf3c42a40dacea470ef263c834a4998c050914e4378afa9c17aa59b3f7e1ef",
+  "sourceDigestFormat": "SHA256 of sorted '<file SHA256>  <relative path>\\n' for Git-visible source files, excluding docs/verification/",
+  "host": "Linux x64, .NET SDK 10.0.112; local installed ONI build 744825",
+  "frameworkBehavioralChecks": 10,
+  "installedCliNativeRuns": [
+    {
+      "name": "Heat crosses a solid interface",
+      "evidence": "native-sim",
+      "status": "passed",
+      "fingerprint": "df6d447f9bf0d940882c64c13fed7ed9f41ea2c3fd2edb16c1cb7a6970661836",
+      "stepsCompleted": 100,
+      "initialMass": 1396000,
+      "finalMass": 1396000,
+      "adapter": "oni-744825-linux-x64-v1",
+      "nativeSha256": "85111cd0b1fc14c79c785581d6c055280b9d48ba705776f3d14eb0a7b239c12d",
+      "managedSha256": "6db652990ad1038e86b3493ed43004e12bfd61e62a4be60c787a9a9b9ac52ee1",
+      "exitCode": 0
+    },
+    {
+      "name": "Heat crosses a solid interface",
+      "evidence": "native-sim",
+      "status": "passed",
+      "fingerprint": "df6d447f9bf0d940882c64c13fed7ed9f41ea2c3fd2edb16c1cb7a6970661836",
+      "stepsCompleted": 100,
+      "initialMass": 1396000,
+      "finalMass": 1396000,
+      "adapter": "oni-744825-linux-x64-v1",
+      "nativeSha256": "85111cd0b1fc14c79c785581d6c055280b9d48ba705776f3d14eb0a7b239c12d",
+      "managedSha256": "6db652990ad1038e86b3493ed43004e12bfd61e62a4be60c787a9a9b9ac52ee1",
+      "exitCode": 0
+    },
+    {
+      "name": "Heat crosses a solid interface",
+      "evidence": "native-sim",
+      "status": "passed",
+      "fingerprint": "df6d447f9bf0d940882c64c13fed7ed9f41ea2c3fd2edb16c1cb7a6970661836",
+      "stepsCompleted": 100,
+      "initialMass": 1396000,
+      "finalMass": 1396000,
+      "adapter": "oni-744825-linux-x64-v1",
+      "nativeSha256": "85111cd0b1fc14c79c785581d6c055280b9d48ba705776f3d14eb0a7b239c12d",
+      "managedSha256": "6db652990ad1038e86b3493ed43004e12bfd61e62a4be60c787a9a9b9ac52ee1",
+      "exitCode": 0
+    },
+    {
+      "name": "Liquid falls into a sealed basin",
+      "evidence": "native-sim",
+      "status": "passed",
+      "fingerprint": "12588774308dd2c465d4f10ee35570afe5ada27280ed7ac5c1aece6d61cb4b72",
+      "stepsCompleted": 100,
+      "initialMass": 1224000,
+      "finalMass": 1223999.9993833303,
+      "adapter": "oni-744825-linux-x64-v1",
+      "nativeSha256": "85111cd0b1fc14c79c785581d6c055280b9d48ba705776f3d14eb0a7b239c12d",
+      "managedSha256": "6db652990ad1038e86b3493ed43004e12bfd61e62a4be60c787a9a9b9ac52ee1",
+      "exitCode": 0
+    },
+    {
+      "name": "Liquid falls into a sealed basin",
+      "evidence": "native-sim",
+      "status": "passed",
+      "fingerprint": "12588774308dd2c465d4f10ee35570afe5ada27280ed7ac5c1aece6d61cb4b72",
+      "stepsCompleted": 100,
+      "initialMass": 1224000,
+      "finalMass": 1223999.9993833303,
+      "adapter": "oni-744825-linux-x64-v1",
+      "nativeSha256": "85111cd0b1fc14c79c785581d6c055280b9d48ba705776f3d14eb0a7b239c12d",
+      "managedSha256": "6db652990ad1038e86b3493ed43004e12bfd61e62a4be60c787a9a9b9ac52ee1",
+      "exitCode": 0
+    },
+    {
+      "name": "Liquid falls into a sealed basin",
+      "evidence": "native-sim",
+      "status": "passed",
+      "fingerprint": "12588774308dd2c465d4f10ee35570afe5ada27280ed7ac5c1aece6d61cb4b72",
+      "stepsCompleted": 100,
+      "initialMass": 1224000,
+      "finalMass": 1223999.9993833303,
+      "adapter": "oni-744825-linux-x64-v1",
+      "nativeSha256": "85111cd0b1fc14c79c785581d6c055280b9d48ba705776f3d14eb0a7b239c12d",
+      "managedSha256": "6db652990ad1038e86b3493ed43004e12bfd61e62a4be60c787a9a9b9ac52ee1",
+      "exitCode": 0
+    },
+    {
+      "name": "Sealed gas conserves mass",
+      "evidence": "native-sim",
+      "status": "passed",
+      "fingerprint": "a3e382c06b4f197dbfd7361bfaf8fbff79af2b7a774c67672a3a8c747808ad50",
+      "stepsCompleted": 50,
+      "initialMass": 1200196,
+      "finalMass": 1200196,
+      "adapter": "oni-744825-linux-x64-v1",
+      "nativeSha256": "85111cd0b1fc14c79c785581d6c055280b9d48ba705776f3d14eb0a7b239c12d",
+      "managedSha256": "6db652990ad1038e86b3493ed43004e12bfd61e62a4be60c787a9a9b9ac52ee1",
+      "exitCode": 0
+    },
+    {
+      "name": "Sealed gas conserves mass",
+      "evidence": "native-sim",
+      "status": "passed",
+      "fingerprint": "a3e382c06b4f197dbfd7361bfaf8fbff79af2b7a774c67672a3a8c747808ad50",
+      "stepsCompleted": 50,
+      "initialMass": 1200196,
+      "finalMass": 1200196,
+      "adapter": "oni-744825-linux-x64-v1",
+      "nativeSha256": "85111cd0b1fc14c79c785581d6c055280b9d48ba705776f3d14eb0a7b239c12d",
+      "managedSha256": "6db652990ad1038e86b3493ed43004e12bfd61e62a4be60c787a9a9b9ac52ee1",
+      "exitCode": 0
+    },
+    {
+      "name": "Sealed gas conserves mass",
+      "evidence": "native-sim",
+      "status": "passed",
+      "fingerprint": "a3e382c06b4f197dbfd7361bfaf8fbff79af2b7a774c67672a3a8c747808ad50",
+      "stepsCompleted": 50,
+      "initialMass": 1200196,
+      "finalMass": 1200196,
+      "adapter": "oni-744825-linux-x64-v1",
+      "nativeSha256": "85111cd0b1fc14c79c785581d6c055280b9d48ba705776f3d14eb0a7b239c12d",
+      "managedSha256": "6db652990ad1038e86b3493ed43004e12bfd61e62a4be60c787a9a9b9ac52ee1",
+      "exitCode": 0
+    }
+  ],
+  "installedCliManagedRuns": [
+    {
+      "name": "ExampleTests.PolicyCanRunWithoutGameFiles",
+      "evidence": "managed-host",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "name": "ExampleTests.InstalledGameMethodRunsWithoutUnity",
+      "evidence": "managed-host+game-code",
+      "status": "passed",
+      "managedSha256": "6db652990ad1038e86b3493ed43004e12bfd61e62a4be60c787a9a9b9ac52ee1",
+      "exitCode": 0
+    },
+    {
+      "name": "ExampleTests.NativeEnergyRaisesGasTemperature",
+      "evidence": "managed-host+native-sim",
+      "status": "passed",
+      "adapter": "oni-744825-linux-x64-v1",
+      "nativeSha256": "85111cd0b1fc14c79c785581d6c055280b9d48ba705776f3d14eb0a7b239c12d",
+      "managedSha256": "6db652990ad1038e86b3493ed43004e12bfd61e62a4be60c787a9a9b9ac52ee1",
+      "exitCode": 0
+    },
+    {
+      "name": "ExampleTests.NativeCellReplacementChangesTemperature",
+      "evidence": "managed-host+native-sim",
+      "status": "passed",
+      "adapter": "oni-744825-linux-x64-v1",
+      "nativeSha256": "85111cd0b1fc14c79c785581d6c055280b9d48ba705776f3d14eb0a7b239c12d",
+      "managedSha256": "6db652990ad1038e86b3493ed43004e12bfd61e62a4be60c787a9a9b9ac52ee1",
+      "exitCode": 0
+    },
+    {
+      "name": "ExampleTests.CustomModMaterialConductsHeat",
+      "evidence": "managed-host+native-sim",
+      "status": "passed",
+      "adapter": "oni-744825-linux-x64-v1",
+      "nativeSha256": "85111cd0b1fc14c79c785581d6c055280b9d48ba705776f3d14eb0a7b239c12d",
+      "managedSha256": "6db652990ad1038e86b3493ed43004e12bfd61e62a4be60c787a9a9b9ac52ee1",
+      "exitCode": 0
+    }
+  ],
+  "intentionalFailingNativeAssertion": [
+    {
+      "name": "Intentional impossible temperature",
+      "evidence": "native-sim",
+      "status": "failed",
+      "exitCode": 1
+    }
+  ],
+  "nativeRunExecveProgramBasenames": [
+    "oniharness"
+  ],
+  "gameOrUnityPlayerLaunchedInNativeTrace": false,
+  "limitations": "Small explicit fixtures and selected .NET-host methods; no ONI gameplay, full lifecycle or Harmony runtime evidence. Raw logs and game files remain local."
+}

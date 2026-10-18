@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><NoWarn>$(NoWarn);CA2255</NoWarn></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../../src/OniHarness.Core/OniHarness.Core.csproj" /></ItemGroup>
+</Project>

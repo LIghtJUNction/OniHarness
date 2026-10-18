@@ -1,0 +1,15 @@
+{
+  "name": "Liquid falls into a sealed basin",
+  "width": 16,
+  "height": 16,
+  "steps": 100,
+  "fill": { "element": "Vacuum", "mass": 0, "temperature": 300 },
+  "regions": [
+    { "x": 5, "y": 8, "width": 6, "height": 4,
+      "cell": { "element": "Water", "mass": 1000, "temperature": 300 } }
+  ],
+  "assertions": [
+    { "kind": "massConserved", "absoluteTolerance": 0.1 },
+    { "kind": "cellMass", "x": 8, "y": 1, "min": 1 }
+  ]
+}
