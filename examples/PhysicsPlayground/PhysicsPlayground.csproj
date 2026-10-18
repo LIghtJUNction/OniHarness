@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup><ProjectReference Include="../../src/OniHarness.Core/OniHarness.Core.csproj" /></ItemGroup>
+</Project>

@@ -61,6 +61,40 @@ dotnet tool install --tool-path .tools --add-source ./packages \
 The release provides `OniHarness.Cli` and `OniHarness.Core` packages. They are
 downloadable release artifacts; publication to nuget.org is a separate step.
 
+## Agent skill and physics replay (source checkout)
+
+The repository includes an [oni-harness skill](.agents/skills/oni-harness/SKILL.md)
+for agents working with headless tests. It distinguishes real native fixtures
+from .NET-host tests and full colony gameplay. This skill and playground are
+source-checkout additions after the v0.1.0 release; use the current repository.
+
+```sh
+python3 scripts/physics_playground.py --game-path /path/to/OxygenNotIncluded \
+  --repeat 2 --output artifacts/physics-playground
+```
+
+Open the resulting `index.html` for a self-contained state replay: falling
+water, removal of three partition cells, water crossing to another chamber,
+then energy injection into an observed water cell. The controller waits for
+measured target states and stops if a phase exceeds its step budget. Tests
+check gravity, water mass, flow and heating. Intentional solid removal is
+accounted for separately from unintended mass loss.
+
+Each run gets a new trace directory. `trace.json` retains every sampled cell,
+fixture inputs, actions, checks and file fingerprints; `summary.json` compares
+independent final states. A failed/unsupported/timed-out run stays a failure.
+Use `--phase-step-limit 20` for a deliberately short observation budget to
+verify that the controller stops before issuing the next action.
+
+Add `--gif` to also render `replay.gif` and `overview.png` when Pillow is already
+installed. HTML needs no optional Python dependencies. The visualization is a
+recorded physics fixture, not an ONI screenshot, save or duplicant playthrough.
+
+![Recorded native physics fixture: water, partition removal and heating](docs/images/physics-playground.gif)
+
+[Measured playground results](docs/verification/playground.json) include the
+accepted binary hashes, phase checks and a deliberately rejected short-budget run.
+
 ## Write a scenario
 
 ```json

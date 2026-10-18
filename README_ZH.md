@@ -53,6 +53,31 @@ python3 scripts/verify.py --game-path /path/to/OxygenNotIncluded
 第一条运行公开 CI 同样的框架验证；第二条额外运行真实游戏库测试。
 用自己的 runner 提供本地游戏安装，公共 CI 不需要、也不会下载游戏文件。
 
+## 配套技能与连续实验
+
+仓库内附带 [oni-harness 技能](.agents/skills/oni-harness/SKILL.md)。技能和下述实验
+在 v0.1.0 发布后加入源码仓库，使用当前源码即可运行：
+
+```sh
+python3 scripts/physics_playground.py --game-path /path/to/OxygenNotIncluded \
+  --repeat 2 --output artifacts/physics-playground
+```
+
+实验会观察水落入槽底，再移除三个隔板格；观察到足够的水流入右槽后，给一个实际
+水格加热。操作以读回的状态为依据，等待超限就停止，不继续发出后续操作。
+
+打开输出目录里的 `index.html` 可以播放和拖动回放，查看每格质量、温度、操作与
+检查结果。`trace.json` 保留真实采样和材料参数，`summary.json` 比较重复运行结果。
+每次运行使用新目录，避免失败后读到上次留下的状态。
+
+环境已有 Pillow 时可追加 `--gif`，生成 GIF 和四阶段概览图。默认 HTML 无需额外
+Python 依赖。回放来自物理测试数据，不是游戏画面，也不代表已经实现复制人游玩。
+
+![真实原生模拟数据回放](docs/images/physics-playground.gif)
+
+本轮[实测记录](docs/verification/playground.json)附带文件指纹、检查结果和观察预算不足
+时的拒绝结果。12,000 kg 水的最终变化约 0.22 kg，位于预先设定的 0.5 kg 容差内。
+
 测试代码拥有普通本地程序权限。子进程隔离用于处理超时和崩溃，不是权限沙箱。
 
 OniHarness 是独立 Git 项目，通过 submodule 接入 OniMods，其他作者可以单独使用。

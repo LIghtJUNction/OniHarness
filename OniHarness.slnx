@@ -3,5 +3,6 @@
   <Project Path="src/OniHarness.Cli/OniHarness.Cli.csproj" />
   <Project Path="tests/OniHarness.Tests/OniHarness.Tests.csproj" />
   <Project Path="examples/ModTests/ModTests.csproj" />
+  <Project Path="examples/PhysicsPlayground/PhysicsPlayground.csproj" />
   <Project Path="tests/RunnerFixtures/RunnerFixtures.csproj" />
 </Solution>

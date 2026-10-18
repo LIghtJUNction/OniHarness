@@ -15,3 +15,4 @@ artifacts/
 *.snupkg
 core
 core.*
+__pycache__/
