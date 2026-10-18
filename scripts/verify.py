@@ -30,6 +30,8 @@ def main():
         run(*cli, "test", "examples/scenarios", "--game-path", args.game_path, "--repeat", "3", "--report", "artifacts/native-results.json")
         run(*cli, "test", "--assembly", "examples/ModTests/bin/Release/net10.0/ModTests.dll", "--game-path", args.game_path,
             "--report", "artifacts/mod-tests.json")
+        run(sys.executable, "scripts/physics_playground.py", "--game-path", args.game_path,
+            "--repeat", "2", "--output", "artifacts/physics-playground")
     else:
         print("NOT RUN: real native simulation and installed game methods (provide --game-path).")
 

@@ -9,6 +9,8 @@ is a new original project; it is not a copy of the OniMods implementation.
 Its own upstream identity is recorded in [UPSTREAM.toml](UPSTREAM.toml).
 
 ONI, Unity and .NET are separate works. User-supplied mods retain their own terms.
+Python and optional Pillow visualization dependencies also retain their own
+terms; no dependency implementation is copied or bundled here.
 Interop declarations describe the installed library's interface; no game
 assembly, asset, decompiled implementation or save is part of this repository
 or its packages. Local game files are used in place and remain on the user's
