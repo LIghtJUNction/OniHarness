@@ -23,6 +23,10 @@ Use `observe --view text` to show the exact paused map returned to the AI, or
 read-only spectator of those same files. It does not poll or control the game.
 The game-control skill's pause/observe/act/short-step/pause/verify rules and
 authoritative glyph lookup still apply when interpreting glyphs or playing.
+On the tested seven-tool core surface, use the documented `world_editor`
+`command=symbols` compatibility entry for runtime glyph queries when
+`search_control` is absent. The generated runtime result is authoritative;
+do not infer a meaning from a glyph or an old legend.
 
 Measure normal versus reduced mode in the same process/workload; a changed
 config or launch flag is not proof of savings. Keep normal/reduced/no-graphics
@@ -35,7 +39,7 @@ Find the checkout in the current OniHarness repository, `tools/OniHarness` in
 OniMods, or a caller-provided location. An installed skill alone does not contain
 the framework. Read that checkout's `docs/capabilities.md` and `AGENTS.md`.
 
-Use `ONIHARNESS_GAME_PATH` or an explicitly provided local game path. When missing,
+For native fixture runs, use `ONIHARNESS_GAME_PATH` or an explicitly provided local game path. When missing,
 check the usual local Steam ONI installation directories before asking. Do not
 download game files or scan the whole home directory. Run `doctor` to verify the
 installed fingerprints; unsupported versions are a reported blocker, not a reason

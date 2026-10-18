@@ -5,6 +5,11 @@ The original game-free/native tests remain available and never launch the game.
 It is not included in the original v0.1.0 packages. Linux runtime support is
 experimental; a successful startup does not certify every game/mod feature.
 
+[Recorded local verification](verification/runtime.json) includes a real save
+copy, native clock/duplicant movement, a killed-client stop/recovery test, the
+browser's exact-map check and a short paused ABBA rendering comparison. Those
+observations apply to that installation/workload, not every colony or mod.
+
 ## Rendering and observation are separate options
 
 | Option | What it does |
