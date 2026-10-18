@@ -101,6 +101,7 @@ def main():
     p = commands.add_parser("step", help="Bounded real-time smoke step; always attempts pause in finally")
     p.add_argument("--seconds", type=float, default=5)
     p.add_argument("--speed", type=int, choices=[1, 2, 3], default=1)
+    p.add_argument("--release-native-pause", action="store_true", help="Explicitly resume an inspected test save's native pause through launch/start; never reload")
     p = commands.add_parser("serve", help="Optional read-only text spectator; never contacts MCP")
     p.add_argument("--port", type=int, default=8790)
     args = parser.parse_args()
@@ -177,15 +178,36 @@ def main():
             raise RuntimeError("Companion did not arm the stop deadline; game remains paused")
         try:
             client.call("game_control", {"domain": "speed", "action": "set_speed", "speed": args.speed})
-            client.call("game_control", {"domain": "speed", "action": "resume"})
+            resumed = client.call("game_control", {"domain": "speed", "action": "resume"})
+            if resumed.get("isPaused") and args.release_native_pause:
+                active = client.call("game_control", {"domain": "launch", "action": "status", "limit": 1})
+                if not active.get("loaded") or not active.get("activeSaveUsable"):
+                    raise RuntimeError("Cannot release native pause without an already loaded exact save")
+                client.call("game_control", {"domain": "launch", "action": "start", "path": active["activeSaveFile"],
+                                             "resume": True, "speed": args.speed, "forceLoad": False, "confirm": True})
+            running = client.call("game_control", {"domain": "speed", "action": "time"})
+            if running.get("isPaused") is not False:
+                raise RuntimeError("Native game pause remains. Inspect its cause; only for a known test pause use --release-native-pause.")
             time.sleep(args.seconds)
         finally:
             client.call("game_control", {"domain": "speed", "action": "pause"})
         after = client.call("game_control", {"domain": "speed", "action": "time"})
         if after.get("isPaused") is not True:
             raise RuntimeError("Pause after smoke step was not verified")
+        refresh_deadline = time.monotonic() + 2.5
+        while time.monotonic() < refresh_deadline:
+            final_status = json.loads(status_path.read_text(encoding="utf-8"))
+            if final_status.get("paused") and final_status["capturedAt"] != status["capturedAt"]:
+                break
+            time.sleep(.1)
+        else:
+            raise RuntimeError("No fresh paused telemetry after step")
+        advanced = final_status["simulationSeconds"] - status["simulationSeconds"]
+        if advanced <= 0:
+            raise RuntimeError("Game clock did not advance; smoke step failed")
         record = {"capturedAt": datetime.now(timezone.utc).isoformat(), "tool": "bounded_smoke_step",
-                  "wallSeconds": args.seconds, "speed": args.speed, "before": before, "after": after}
+                  "wallSeconds": args.seconds, "speed": args.speed, "before": before, "after": after,
+                  "simulationSecondsAdvanced": advanced, "releasedNativePause": args.release_native_pause}
         atomic_json(args.output / "action.json", record)
         print(json.dumps(record, ensure_ascii=False, indent=2))
 

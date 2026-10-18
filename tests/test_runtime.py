@@ -10,9 +10,18 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from runtime import observe
 from runtime_mcp import Client
+from install_runtime import enable_entry
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_enable_discovered_local_entry_with_null_dlc_list(self):
+        entry = {"enabled": False, "enabledForDlc": None, "staticID": "existing", "label": {"version": 12}}
+        enable_entry(entry, "EXPANSION1_ID")
+        enable_entry(entry, "EXPANSION1_ID")
+        self.assertTrue(entry["enabled"])
+        self.assertEqual(entry["enabledForDlc"], ["EXPANSION1_ID"])
+        self.assertEqual(entry["label"], {"version": 12})
+
     def test_rejects_nonlocal_and_credential_urls_before_connecting(self):
         for url in ["http://example.com/mcp/", "https://127.0.0.1/", "http://secret@localhost/"]:
             with self.assertRaises(ValueError):

@@ -137,6 +137,16 @@ lease keeps pausing until a new step lease is armed or the lease file is
 deliberately removed while paused. This is a smoke-test primitive; use current
 OniMcp condition-driven stepping for a supported autonomous controller.
 
+Native pauses are counted separately from the MCP pause hold. A remaining native
+pause is a failure, not a successful zero-progress step. After inspecting a
+disposable save's initial pause, explicitly pass `--release-native-pause` if
+needed; this uses ONI's existing launch/start resume route for the already
+loaded exact save with `forceLoad=false`, and does not reload it. It can clear
+native pause holds, so do not use it to bypass unexplained UI/modal pauses.
+The companion releases only its own deadline pause when a new lease is armed.
+Every successful step also requires a fresh paused status and actual positive
+game-clock progress.
+
 If authentication is enabled, put the token in `ONIHARNESS_MCP_TOKEN`; it is
 sent only to the configured loopback HTTP endpoint, without proxies or redirects,
 and is never written to receipts. Do not put secrets in explicit tool arguments.

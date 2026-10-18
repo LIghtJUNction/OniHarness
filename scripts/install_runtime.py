@@ -14,6 +14,14 @@ ROOT = Path(__file__).resolve().parents[1]
 STATIC_ID = "LIghtJUNction.OniHarness.Runtime"
 
 
+def enable_entry(entry, dlc):
+    dlcs = entry.get("enabledForDlc") or []
+    if not isinstance(dlcs, list):
+        raise ValueError("Companion DLC list is malformed")
+    entry["enabled"] = True
+    entry["enabledForDlc"] = list(dict.fromkeys([*dlcs, dlc]))
+
+
 def game_pids():
     if not sys.platform.startswith("linux"):
         raise RuntimeError("Runtime installation/launch is currently verified on Linux only")
@@ -59,9 +67,7 @@ def main():
                  "status": 1, "enabled": True, "enabledForDlc": [], "crash_count": 0,
                  "reinstall_path": None, "staticID": STATIC_ID}
         entries.append(entry)
-    entry["enabled"] = True
-    if args.dlc not in entry.setdefault("enabledForDlc", []):
-        entry["enabledForDlc"].append(args.dlc)
+    enable_entry(entry, args.dlc)
     atomic_json(manifest, document)
     print("Installed own companion only:", folder)
     print("Original mod manifest retained locally:", backup)

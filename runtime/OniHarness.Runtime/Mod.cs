@@ -37,6 +37,7 @@ namespace OniHarness.Runtime
         private string mode = "normal";
         private string error;
         private RunLease lease;
+        private SpeedControlScreen deadlinePauseScreen;
         private int cameraRenderCallbacks;
         private int cameraRenderFrames;
         private int lastCameraFrame = -1;
@@ -68,7 +69,10 @@ namespace OniHarness.Runtime
             // The game owns the stop deadline, so a lost test client cannot leave it running.
             if (lease != null && System.DateTimeOffset.UtcNow >= lease.DeadlineUtc &&
                 SpeedControlScreen.Instance != null && !SpeedControlScreen.Instance.IsPaused)
-                SpeedControlScreen.Instance.Pause();
+            {
+                SpeedControlScreen.Instance.Pause(playSound: false);
+                deadlinePauseScreen = SpeedControlScreen.Instance;
+            }
             if (root == null || Time.realtimeSinceStartup < nextCheck) return;
             nextCheck = Time.realtimeSinceStartup + 1f;
             try
@@ -99,7 +103,16 @@ namespace OniHarness.Runtime
             try
             {
                 var leasePath = Path.Combine(root, "run-lease.json");
-                lease = File.Exists(leasePath) ? JsonConvert.DeserializeObject<RunLease>(File.ReadAllText(leasePath)) : null;
+                var nextLease = File.Exists(leasePath) ? JsonConvert.DeserializeObject<RunLease>(File.ReadAllText(leasePath)) : null;
+                if (nextLease != null && nextLease.Id != lease?.Id && nextLease.DeadlineUtc > System.DateTimeOffset.UtcNow &&
+                    deadlinePauseScreen != null)
+                {
+                    // Native pauses are counted. Release only the hold this companion acquired.
+                    if (ReferenceEquals(deadlinePauseScreen, SpeedControlScreen.Instance))
+                        deadlinePauseScreen.Unpause(playSound: false);
+                    deadlinePauseScreen = null;
+                }
+                lease = nextLease;
             }
             catch (Exception ex)
             {
