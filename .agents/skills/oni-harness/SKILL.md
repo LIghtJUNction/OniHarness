@@ -1,14 +1,33 @@
 ---
 name: oni-harness
-description: Run and inspect Oxygen Not Included headless tests with OniHarness, including real native simulation fixtures, C# mod tests and recorded physics experiments. Use for game-free testing or requests to see headless simulation effects; full colony gameplay still requires a separately authorized game-control workflow.
+description: Test ONI mods with OniHarness using game-free native fixtures or explicit Steam-launched real-game tests with reduced rendering and an optional AI text-map spectator. Use for headless testing, rendering-cost checks, recorded physics experiments and shared AI observations.
 ---
 
 # OniHarness
 
-Use the actual harness and installed native library. Never launch ONI, Steam or
-Unity Player as a fallback, and never substitute a made-up simulation result.
-This skill runs controlled fixtures; it does not provide dupes, buildings, full
-save loading or Harmony runtime support.
+Choose the runtime explicitly. Native fixtures never launch ONI, Steam or Unity
+as a fallback. When the user authorizes running the game, use the real-game route
+below. Never substitute a made-up simulation result or equate fixture behavior
+with full-game compatibility.
+
+## Real-game route
+
+For gameplay, reduced drawing or watching AI text maps, read `docs/runtime.md`.
+It describes `scripts/install_runtime.py` and explicit `scripts/runtime.py`
+commands. Start the actual game through Steam only. Verify a fresh companion
+status, exact save/mod combination and paused loaded state. Use a disposable
+save copy and short guarded steps. Do not spawn resources or duplicants.
+
+Use `observe --view text` to show the exact paused map returned to the AI, or
+`--view none` to record without displaying a terminal map. `serve` is an optional
+read-only spectator of those same files. It does not poll or control the game.
+The game-control skill's pause/observe/act/short-step/pause/verify rules and
+authoritative glyph lookup still apply when interpreting glyphs or playing.
+
+Measure normal versus reduced mode in the same process/workload; a changed
+config or launch flag is not proof of savings. Keep normal/reduced/no-graphics
+results separate. Do not call untested features fully compatible. Logs, save
+paths and full observations remain private local artifacts unless sanitized.
 
 ## Locate and inspect
 

@@ -1,5 +1,10 @@
 # Architecture
 
+This page describes the original game-free worker/native adapter architecture.
+The optional [real-game workflow](runtime.md) is separate: Steam starts ONI,
+an in-game companion controls drawing, and a loopback MCP client records the
+same paused virtual-file maps for the agent and optional spectator.
+
 The goal is quick, reproducible tests without starting an ONI or Unity Player
 process. The harness is a C# SDK and .NET CLI; it does not rebuild Unity or model
 ONI physics in a substitute engine.
