@@ -26,7 +26,7 @@ class RuntimeTests(unittest.TestCase):
         group.fds = [99]
         group.started_times = (100, 90)
         raw = struct.pack("7Q", 4, 160, 150, 1000, 2000, 20, 5)
-        with patch("pmu.fcntl.ioctl"), patch("pmu.os.read", return_value=raw):
+        with patch("pmu._ioctl"), patch("pmu.os.read", return_value=raw):
             result = group.stop()
         self.assertEqual((result["enabledNs"], result["runningNs"]), (60, 60))
         self.assertEqual(result["cacheReferences"], 20)
@@ -34,10 +34,23 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(metrics(result)["genericCacheMissRatio"], .25)
 
     def test_denied_hardware_counters_raise_instead_of_reporting_zeros(self):
-        with patch("pmu.ctypes.CDLL") as library, patch("pmu.ctypes.get_errno", return_value=13):
+        with patch("pmu.platform.system", return_value="Linux"), \
+                patch("pmu.platform.machine", return_value="x86_64"), \
+                patch("pmu.ctypes.CDLL") as library, patch("pmu.ctypes.get_errno", return_value=13):
             library.return_value.syscall.return_value = -1
             with self.assertRaises(OSError):
                 CounterGroup(0)
+
+    def test_hardware_counters_reject_unsupported_platforms_before_native_calls(self):
+        for system, machine in (("Windows", "AMD64"), ("Darwin", "x86_64"), ("Linux", "aarch64")):
+            with self.subTest(system=system, machine=machine), \
+                    patch("pmu.platform.system", return_value=system), \
+                    patch("pmu.platform.machine", return_value=machine), \
+                    patch("pmu.ctypes.CDLL") as library, patch("pmu._ioctl") as ioctl:
+                with self.assertRaisesRegex(RuntimeError, "Linux x86_64 only"):
+                    CounterGroup(0)
+                library.assert_not_called()
+                ioctl.assert_not_called()
 
     def test_measurement_rejects_an_unloaded_mod_before_starting_steps(self):
         with tempfile.TemporaryDirectory() as temp:
