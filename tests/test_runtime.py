@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 import contextlib
 import io
+import struct
 from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -16,9 +17,28 @@ from runtime import observe, main, read_status, validate_headless, wait_ready
 from runtime_mcp import Client
 from install_runtime import enable_entry
 from measure_steps import require_log_markers
+from pmu import CounterGroup, metrics
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_pmu_reports_window_times_after_a_reused_counter_reset(self):
+        group = object.__new__(CounterGroup)
+        group.fds = [99]
+        group.started_times = (100, 90)
+        raw = struct.pack("7Q", 4, 160, 150, 1000, 2000, 20, 5)
+        with patch("pmu.fcntl.ioctl"), patch("pmu.os.read", return_value=raw):
+            result = group.stop()
+        self.assertEqual((result["enabledNs"], result["runningNs"]), (60, 60))
+        self.assertEqual(result["cacheReferences"], 20)
+        self.assertEqual(result["cacheMisses"], 5)
+        self.assertEqual(metrics(result)["genericCacheMissRatio"], .25)
+
+    def test_denied_hardware_counters_raise_instead_of_reporting_zeros(self):
+        with patch("pmu.ctypes.CDLL") as library, patch("pmu.ctypes.get_errno", return_value=13):
+            library.return_value.syscall.return_value = -1
+            with self.assertRaises(OSError):
+                CounterGroup(0)
+
     def test_measurement_rejects_an_unloaded_mod_before_starting_steps(self):
         with tempfile.TemporaryDirectory() as temp:
             output = Path(temp)
