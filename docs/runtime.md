@@ -13,6 +13,11 @@ render callbacks, no OS game window or DRM descriptor, and client-loss stop/reco
 It is one build/save/mod combination, not complete feature coverage or a measured
 whole-game speedup.
 
+[First performance iteration](verification/performance-loop.json) records the
+control-notification/client-loss checks and a CycleTrim single-install regression
+on that development save. Paging varied substantially; these samples do not
+establish a simulation speedup or memory saving.
+
 [Earlier reduced-render verification](verification/runtime.json) includes a real save
 copy, native clock/duplicant movement, a killed-client stop/recovery test, the
 browser's exact-map check and a short paused ABBA rendering comparison. Those

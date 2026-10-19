@@ -1,0 +1,793 @@
+{
+  "schema": 1,
+  "capturedAt": "2026-10-19T03:11:57.392255+00:00",
+  "source": {
+    "OniHarness": "26aaf7f2ce8e8296fde424a80e04ca5d07a2b800",
+    "CycleTrimBaseline": "f237cd05ff04836230d9ff83c0165690f478892b",
+    "CycleTrimCandidate": "6cf0cbedfe472f8dcbf349489f7f0ccc2a70425f"
+  },
+  "environment": {
+    "gameBuild": 744825,
+    "unity": "6000.3.5f2",
+    "platform": "Linux x64",
+    "updateCap": 30,
+    "speed": 1,
+    "save": "Three-duplicant development save copy, with pre-existing test objects; not a survival or late-game benchmark",
+    "saveCopySha256": "29aecb14734195a8cfb447b1564a9927dac77c988aeccd90fe75addcf0067494",
+    "otherMods": "Existing enabled mods were retained. No FastTrack or external Harmony owner on the seven measured targets; this is not a minimal-mod baseline."
+  },
+  "headlessAcceptance": {
+    "paused": true,
+    "headless": true,
+    "graphicsDevice": "Null",
+    "cameraRenderCallbacks": 0,
+    "drmDescriptors": 0,
+    "duplicants": 3,
+    "gameHasCrash": false,
+    "gameError": null,
+    "originalSaveUnchanged": true,
+    "cycleTrimEnabledForTestedDlc": true,
+    "cycleTrimDllSha256": "46ecc8296e3e1781f4550a138ca7899c3def65e61579005d05827f3b696accd9",
+    "runtimeDllSha256": "149df762afa0f78b8ac0a7d47c96e592516497cca35b07cb602f314487cf2b87"
+  },
+  "notificationClientLoss": {
+    "controlNotifications": true,
+    "clientExit": -9,
+    "pauseAfterKillSeconds": 8.790555687996676,
+    "clockStable": true,
+    "pidUnchanged": true,
+    "headless": true,
+    "recoveryAdvanced": 1.0997314453125,
+    "recoveryPaused": true
+  },
+  "harnessLatency": {
+    "baseline": {
+      "label": "baseline",
+      "workload": "end-to-end guarded wall-time steps, including client startup, lease acknowledgment and final pause verification",
+      "headless": true,
+      "unity": "6000.3.5f2",
+      "warmups": 1,
+      "requestedStepSeconds": 1.0,
+      "speed": 1,
+      "samples": [
+        {
+          "wallSeconds": 2.7526893480098806,
+          "controlOverheadSeconds": 1.7526893480098806,
+          "nativeSeconds": 1.06640625,
+          "gameCpuSeconds": 2.4500000000000455,
+          "majorFaults": 1835,
+          "rssKiB": 450396,
+          "swapKiB": 3199728,
+          "pausedAfter": true,
+          "failed": false,
+          "gameCpuSecondsPerNativeSecond": 2.29743589743594
+        },
+        {
+          "wallSeconds": 3.05740910100576,
+          "controlOverheadSeconds": 2.05740910100576,
+          "nativeSeconds": 1.0997314453125,
+          "gameCpuSeconds": 2.6100000000000136,
+          "majorFaults": 1361,
+          "rssKiB": 456032,
+          "swapKiB": 3194268,
+          "pausedAfter": true,
+          "failed": false,
+          "gameCpuSecondsPerNativeSecond": 2.3733066933067057
+        },
+        {
+          "wallSeconds": 2.9074576319981134,
+          "controlOverheadSeconds": 1.9074576319981134,
+          "nativeSeconds": 1.0997314453125,
+          "gameCpuSeconds": 2.6900000000000546,
+          "majorFaults": 1639,
+          "rssKiB": 462724,
+          "swapKiB": 3187708,
+          "pausedAfter": true,
+          "failed": false,
+          "gameCpuSecondsPerNativeSecond": 2.446051726051776
+        },
+        {
+          "wallSeconds": 2.8936810640007025,
+          "controlOverheadSeconds": 1.8936810640007025,
+          "nativeSeconds": 1.0997314453125,
+          "gameCpuSeconds": 2.560000000000059,
+          "majorFaults": 1126,
+          "rssKiB": 467476,
+          "swapKiB": 3183188,
+          "pausedAfter": true,
+          "failed": false,
+          "gameCpuSecondsPerNativeSecond": 2.3278410478411016
+        },
+        {
+          "wallSeconds": 2.986632661995827,
+          "controlOverheadSeconds": 1.9866326619958272,
+          "nativeSeconds": 1.0997314453125,
+          "gameCpuSeconds": 2.659999999999968,
+          "majorFaults": 2360,
+          "rssKiB": 477340,
+          "swapKiB": 3173784,
+          "pausedAfter": true,
+          "failed": false,
+          "gameCpuSecondsPerNativeSecond": 2.41877233877231
+        }
+      ],
+      "summary": {
+        "wallSeconds": {
+          "median": 2.9074576319981134,
+          "min": 2.7526893480098806,
+          "max": 3.05740910100576
+        },
+        "controlOverheadSeconds": {
+          "median": 1.9074576319981134,
+          "min": 1.7526893480098806,
+          "max": 2.05740910100576
+        },
+        "gameCpuSecondsPerNativeSecond": {
+          "median": 2.3733066933067057,
+          "min": 2.29743589743594,
+          "max": 2.446051726051776
+        }
+      },
+      "hostLoadAverage": [
+        4.43408203125,
+        5.17333984375,
+        6.19775390625
+      ],
+      "hostCpuCount": 24
+    },
+    "candidate": {
+      "label": "notifications",
+      "workload": "end-to-end guarded wall-time steps, including client startup, lease acknowledgment and final pause verification",
+      "headless": true,
+      "unity": "6000.3.5f2",
+      "warmups": 1,
+      "requestedStepSeconds": 1.0,
+      "speed": 1,
+      "samples": [
+        {
+          "wallSeconds": 1.80820802199014,
+          "controlOverheadSeconds": 0.80820802199014,
+          "nativeSeconds": 1.06640625,
+          "gameCpuSeconds": 1.5300000000000011,
+          "majorFaults": 141,
+          "rssKiB": 3016888,
+          "swapKiB": 676832,
+          "pausedAfter": true,
+          "failed": false,
+          "gameCpuSecondsPerNativeSecond": 1.434725274725276
+        },
+        {
+          "wallSeconds": 1.799141634008265,
+          "controlOverheadSeconds": 0.7991416340082651,
+          "nativeSeconds": 1.0997314453125,
+          "gameCpuSeconds": 1.4399999999999977,
+          "majorFaults": 48,
+          "rssKiB": 3017128,
+          "swapKiB": 676636,
+          "pausedAfter": true,
+          "failed": false,
+          "gameCpuSecondsPerNativeSecond": 1.3094105894105874
+        },
+        {
+          "wallSeconds": 1.74362593999831,
+          "controlOverheadSeconds": 0.7436259399983101,
+          "nativeSeconds": 1.0997314453125,
+          "gameCpuSeconds": 1.4399999999999977,
+          "majorFaults": 64,
+          "rssKiB": 3017908,
+          "swapKiB": 676380,
+          "pausedAfter": true,
+          "failed": false,
+          "gameCpuSecondsPerNativeSecond": 1.3094105894105874
+        },
+        {
+          "wallSeconds": 1.7668085350014735,
+          "controlOverheadSeconds": 0.7668085350014735,
+          "nativeSeconds": 1.0997314453125,
+          "gameCpuSeconds": 1.25,
+          "majorFaults": 136,
+          "rssKiB": 3018476,
+          "swapKiB": 675824,
+          "pausedAfter": true,
+          "failed": false,
+          "gameCpuSecondsPerNativeSecond": 1.1366411366411366
+        },
+        {
+          "wallSeconds": 1.8925473419949412,
+          "controlOverheadSeconds": 0.8925473419949412,
+          "nativeSeconds": 1.0997314453125,
+          "gameCpuSeconds": 1.7000000000000028,
+          "majorFaults": 111,
+          "rssKiB": 2975008,
+          "swapKiB": 675400,
+          "pausedAfter": true,
+          "failed": false,
+          "gameCpuSecondsPerNativeSecond": 1.5458319458319485
+        }
+      ],
+      "summary": {
+        "wallSeconds": {
+          "median": 1.799141634008265,
+          "min": 1.74362593999831,
+          "max": 1.8925473419949412
+        },
+        "controlOverheadSeconds": {
+          "median": 0.7991416340082651,
+          "min": 0.7436259399983101,
+          "max": 0.8925473419949412
+        },
+        "gameCpuSecondsPerNativeSecond": {
+          "median": 1.3094105894105874,
+          "min": 1.1366411366411366,
+          "max": 1.5458319458319485
+        }
+      },
+      "hostLoadAverage": [
+        6.15771484375,
+        5.1826171875,
+        5.76416015625
+      ],
+      "hostCpuCount": 24
+    },
+    "conclusion": "Preliminary guarded-step latency observation only. Different paging/residency prevents attribution of CPU or whole-game speedup."
+  },
+  "cycleTrim": {
+    "baseline": {
+      "label": "cycletrim-double",
+      "workload": "end-to-end guarded wall-time steps, including client startup, lease acknowledgment and final pause verification",
+      "headless": true,
+      "unity": "6000.3.5f2",
+      "warmups": 1,
+      "requestedStepSeconds": 3.0,
+      "speed": 1,
+      "samples": [
+        {
+          "wallSeconds": 3.7403163019916974,
+          "controlOverheadSeconds": 0.7403163019916974,
+          "nativeSeconds": 3.06591796875,
+          "gameCpuSeconds": 3.700000000000017,
+          "majorFaults": 50,
+          "rssKiB": 3522692,
+          "swapKiB": 86520,
+          "pausedAfter": true,
+          "failed": false,
+          "stepTimings": {
+            "initialPauseSeconds": 0.16703611900447868,
+            "leaseAcknowledgmentSeconds": 0.2086421409912873,
+            "resumeSeconds": 0.09369629200955387,
+            "runningWallSeconds": 3.0001722159940982,
+            "pauseVerificationSeconds": 0.0839349099987885
+          },
+          "gameCpuSecondsPerNativeSecond": 1.2068163720337688
+        },
+        {
+          "wallSeconds": 3.678304795001168,
+          "controlOverheadSeconds": 0.6783047950011678,
+          "nativeSeconds": 3.06591796875,
+          "gameCpuSeconds": 3.780000000000001,
+          "majorFaults": 8,
+          "rssKiB": 3524680,
+          "swapKiB": 86484,
+          "pausedAfter": true,
+          "failed": false,
+          "stepTimings": {
+            "initialPauseSeconds": 0.16420548199675977,
+            "leaseAcknowledgmentSeconds": 0.19369622399972286,
+            "resumeSeconds": 0.07533027400495484,
+            "runningWallSeconds": 3.00017165299505,
+            "pauseVerificationSeconds": 0.08507160500448663
+          },
+          "gameCpuSecondsPerNativeSecond": 1.232909698996656
+        },
+        {
+          "wallSeconds": 3.7295996750035556,
+          "controlOverheadSeconds": 0.7295996750035556,
+          "nativeSeconds": 3.0992431640625,
+          "gameCpuSeconds": 3.6799999999999784,
+          "majorFaults": 5,
+          "rssKiB": 3524708,
+          "swapKiB": 86464,
+          "pausedAfter": true,
+          "failed": false,
+          "stepTimings": {
+            "initialPauseSeconds": 0.17062962001364212,
+            "leaseAcknowledgmentSeconds": 0.2015804249967914,
+            "resumeSeconds": 0.0899588570027845,
+            "runningWallSeconds": 3.0000817089894554,
+            "pauseVerificationSeconds": 0.09527274400170427
+          },
+          "gameCpuSecondsPerNativeSecond": 1.187386663515689
+        },
+        {
+          "wallSeconds": 3.730662792993826,
+          "controlOverheadSeconds": 0.7306627929938259,
+          "nativeSeconds": 3.0992431640625,
+          "gameCpuSeconds": 3.259999999999991,
+          "majorFaults": 7,
+          "rssKiB": 3524896,
+          "swapKiB": 86444,
+          "pausedAfter": true,
+          "failed": false,
+          "stepTimings": {
+            "initialPauseSeconds": 0.1660715030011488,
+            "leaseAcknowledgmentSeconds": 0.1889240149903344,
+            "resumeSeconds": 0.07502698501048144,
+            "runningWallSeconds": 3.000067668996053,
+            "pauseVerificationSeconds": 0.11246895499061793
+          },
+          "gameCpuSecondsPerNativeSecond": 1.0518697073535754
+        },
+        {
+          "wallSeconds": 3.7521458080009324,
+          "controlOverheadSeconds": 0.7521458080009324,
+          "nativeSeconds": 3.0992431640625,
+          "gameCpuSeconds": 3.3200000000000216,
+          "majorFaults": 7,
+          "rssKiB": 3525152,
+          "swapKiB": 86416,
+          "pausedAfter": true,
+          "failed": false,
+          "stepTimings": {
+            "initialPauseSeconds": 0.18219137800042517,
+            "leaseAcknowledgmentSeconds": 0.1959723930049222,
+            "resumeSeconds": 0.08809744000609498,
+            "runningWallSeconds": 3.0000938839948503,
+            "pauseVerificationSeconds": 0.12281971199263353
+          },
+          "gameCpuSecondsPerNativeSecond": 1.071229272519602
+        }
+      ],
+      "summary": {
+        "wallSeconds": {
+          "median": 3.730662792993826,
+          "min": 3.678304795001168,
+          "max": 3.7521458080009324
+        },
+        "controlOverheadSeconds": {
+          "median": 0.7306627929938259,
+          "min": 0.6783047950011678,
+          "max": 0.7521458080009324
+        },
+        "gameCpuSecondsPerNativeSecond": {
+          "median": 1.187386663515689,
+          "min": 1.0518697073535754,
+          "max": 1.232909698996656
+        }
+      },
+      "hostLoadAverage": [
+        5.53515625,
+        5.3271484375,
+        5.6640625
+      ],
+      "hostCpuCount": 24
+    },
+    "candidate": {
+      "label": "cycletrim-single-active",
+      "workload": "end-to-end guarded wall-time steps, including client startup, lease acknowledgment and final pause verification",
+      "headless": true,
+      "unity": "6000.3.5f2",
+      "warmups": 1,
+      "requestedStepSeconds": 3.0,
+      "speed": 1,
+      "samples": [
+        {
+          "wallSeconds": 3.9195992250024574,
+          "controlOverheadSeconds": 0.9195992250024574,
+          "nativeSeconds": 3.2325439453125,
+          "gameCpuSeconds": 4.060000000000002,
+          "majorFaults": 152,
+          "rssKiB": 3301748,
+          "swapKiB": 309788,
+          "pausedAfter": true,
+          "failed": false,
+          "stepTimings": {
+            "initialPauseSeconds": 0.16131488799874205,
+            "leaseAcknowledgmentSeconds": 0.2044174319889862,
+            "resumeSeconds": 0.2551856580103049,
+            "runningWallSeconds": 3.000094959992566,
+            "pauseVerificationSeconds": 0.08938878000481054
+          },
+          "updateFrames": 116,
+          "gameCpuSecondsPerNativeSecond": 1.2559767380385944
+        },
+        {
+          "wallSeconds": 3.761021485013771,
+          "controlOverheadSeconds": 0.7610214850137709,
+          "nativeSeconds": 3.0992431640625,
+          "gameCpuSeconds": 3.780000000000001,
+          "majorFaults": 29,
+          "rssKiB": 3300216,
+          "swapKiB": 309676,
+          "pausedAfter": true,
+          "failed": false,
+          "stepTimings": {
+            "initialPauseSeconds": 0.1532568279944826,
+            "leaseAcknowledgmentSeconds": 0.2053432100074133,
+            "resumeSeconds": 0.10511439199035522,
+            "runningWallSeconds": 3.0000915350101423,
+            "pauseVerificationSeconds": 0.12241696199635044
+          },
+          "updateFrames": 115,
+          "gameCpuSecondsPerNativeSecond": 1.2196526054590575
+        },
+        {
+          "wallSeconds": 3.754633983000531,
+          "controlOverheadSeconds": 0.7546339830005309,
+          "nativeSeconds": 3.0992431640625,
+          "gameCpuSeconds": 3.430000000000007,
+          "majorFaults": 17,
+          "rssKiB": 3166304,
+          "swapKiB": 443692,
+          "pausedAfter": true,
+          "failed": false,
+          "stepTimings": {
+            "initialPauseSeconds": 0.15604749500926118,
+            "leaseAcknowledgmentSeconds": 0.18905172200175002,
+            "resumeSeconds": 0.08703619999869261,
+            "runningWallSeconds": 3.0001284339959966,
+            "pauseVerificationSeconds": 0.12792165100108832
+          },
+          "updateFrames": 115,
+          "gameCpuSecondsPerNativeSecond": 1.1067218086572947
+        },
+        {
+          "wallSeconds": 3.9617313269991428,
+          "controlOverheadSeconds": 0.9617313269991428,
+          "nativeSeconds": 3.0992431640625,
+          "gameCpuSeconds": 3.030000000000001,
+          "majorFaults": 37,
+          "rssKiB": 2741832,
+          "swapKiB": 870388,
+          "pausedAfter": true,
+          "failed": false,
+          "stepTimings": {
+            "initialPauseSeconds": 0.21117459500965197,
+            "leaseAcknowledgmentSeconds": 0.2523970819893293,
+            "resumeSeconds": 0.09943414000736084,
+            "runningWallSeconds": 3.0000832469959278,
+            "pauseVerificationSeconds": 0.14256051000847947
+          },
+          "updateFrames": 122,
+          "gameCpuSecondsPerNativeSecond": 0.9776580408838477
+        },
+        {
+          "wallSeconds": 3.8630341819953173,
+          "controlOverheadSeconds": 0.8630341819953173,
+          "nativeSeconds": 3.0992431640625,
+          "gameCpuSeconds": 3.1299999999999955,
+          "majorFaults": 51,
+          "rssKiB": 2487824,
+          "swapKiB": 1126188,
+          "pausedAfter": true,
+          "failed": false,
+          "stepTimings": {
+            "initialPauseSeconds": 0.18939024899736978,
+            "leaseAcknowledgmentSeconds": 0.22608150300220586,
+            "resumeSeconds": 0.08395296199887525,
+            "runningWallSeconds": 3.0000839160056785,
+            "pauseVerificationSeconds": 0.12056920299073681
+          },
+          "updateFrames": 121,
+          "gameCpuSecondsPerNativeSecond": 1.009923982827207
+        }
+      ],
+      "summary": {
+        "wallSeconds": {
+          "median": 3.8630341819953173,
+          "min": 3.754633983000531,
+          "max": 3.9617313269991428
+        },
+        "controlOverheadSeconds": {
+          "median": 0.8630341819953173,
+          "min": 0.7546339830005309,
+          "max": 0.9617313269991428
+        },
+        "gameCpuSecondsPerNativeSecond": {
+          "median": 1.1067218086572947,
+          "min": 0.9776580408838477,
+          "max": 1.2559767380385944
+        }
+      },
+      "hostLoadAverage": [
+        4.3896484375,
+        5.04541015625,
+        5.4931640625
+      ],
+      "hostCpuCount": 24
+    },
+    "baselineProbe": {
+      "reports": 6,
+      "lastReport": {
+        "stopwatchFrequency": 10000000,
+        "captureGeneration": 1,
+        "reportSequence": 6,
+        "intervalDurationTicks": 555470287,
+        "gc": {
+          "gen0Delta": 1,
+          "gen1Delta": 1,
+          "gen2Delta": 1,
+          "heapBytes": 1664950272,
+          "heapDeltaBytes": -81920
+        },
+        "targets": [
+          {
+            "name": "AsyncPathProber.Manager.TickFrame",
+            "thread": "main",
+            "resolved": true,
+            "fastTrackPatched": false,
+            "externalPatched": false,
+            "patchOwners": [
+              "LIghtJUNction.CycleTrim"
+            ],
+            "calls": 4500,
+            "totalTicks": 3309050,
+            "meanTicks": 735.344,
+            "maxTicks": 59081,
+            "intervalCalls": 3318,
+            "intervalTotalTicks": 2293860,
+            "intervalMeanTicks": 691.338
+          },
+          {
+            "name": "AsyncPathProber.WorkOrder.Execute",
+            "thread": "worker",
+            "resolved": true,
+            "fastTrackPatched": false,
+            "externalPatched": false,
+            "patchOwners": [
+              "LIghtJUNction.CycleTrim"
+            ],
+            "calls": 8996,
+            "totalTicks": 2071528,
+            "meanTicks": 230.272,
+            "maxTicks": 10846,
+            "intervalCalls": 6636,
+            "intervalTotalTicks": 1483907,
+            "intervalMeanTicks": 223.615
+          },
+          {
+            "name": "Navigator.UpdateProbe",
+            "thread": "main",
+            "resolved": true,
+            "fastTrackPatched": false,
+            "externalPatched": false,
+            "patchOwners": [
+              "LIghtJUNction.CycleTrim"
+            ],
+            "calls": 26418,
+            "totalTicks": 1052753,
+            "meanTicks": 39.85,
+            "maxTicks": 43831,
+            "intervalCalls": 19476,
+            "intervalTotalTicks": 647853,
+            "intervalMeanTicks": 33.264
+          },
+          {
+            "name": "FetchManager.FetchablesByPrefabId.UpdatePickups",
+            "thread": "main",
+            "resolved": true,
+            "fastTrackPatched": false,
+            "externalPatched": false,
+            "patchOwners": [
+              "LIghtJUNction.CycleTrim"
+            ],
+            "calls": 3122,
+            "totalTicks": 512585,
+            "meanTicks": 164.185,
+            "maxTicks": 15438,
+            "intervalCalls": 3122,
+            "intervalTotalTicks": 512585,
+            "intervalMeanTicks": 164.185
+          },
+          {
+            "name": "ChoreConsumer.FindNextChore",
+            "thread": "main",
+            "resolved": true,
+            "fastTrackPatched": false,
+            "externalPatched": false,
+            "patchOwners": [
+              "LIghtJUNction.CycleTrim"
+            ],
+            "calls": 27000,
+            "totalTicks": 12698532,
+            "meanTicks": 470.316,
+            "maxTicks": 45553,
+            "intervalCalls": 19908,
+            "intervalTotalTicks": 9080425,
+            "intervalMeanTicks": 456.119
+          },
+          {
+            "name": "BrainScheduler.RenderEveryTick",
+            "thread": "main",
+            "resolved": true,
+            "fastTrackPatched": false,
+            "externalPatched": false,
+            "patchOwners": [
+              "LIghtJUNction.CycleTrim"
+            ],
+            "calls": 4500,
+            "totalTicks": 44902090,
+            "meanTicks": 9978.242,
+            "maxTicks": 377062,
+            "intervalCalls": 3318,
+            "intervalTotalTicks": 32217104,
+            "intervalMeanTicks": 9709.796
+          },
+          {
+            "name": "RoomProber.Sim1000ms",
+            "thread": "main",
+            "resolved": true,
+            "fastTrackPatched": false,
+            "externalPatched": false,
+            "patchOwners": [
+              "LIghtJUNction.CycleTrim"
+            ],
+            "calls": 26,
+            "totalTicks": 584,
+            "meanTicks": 22.462,
+            "maxTicks": 244,
+            "intervalCalls": 26,
+            "intervalTotalTicks": 584,
+            "intervalMeanTicks": 22.462
+          }
+        ]
+      },
+      "resolvedTargetLogLines": 28,
+      "queueRewriteSkipWarnings": 2,
+      "limits": "Cumulative probe windows include paused main-loop work and startup; callback counts/timings were duplicated before the fix. Do not compare them as equivalent work or sum overlapping/parallel target times."
+    },
+    "candidateProbe": {
+      "reports": 5,
+      "lastReport": {
+        "stopwatchFrequency": 10000000,
+        "captureGeneration": 1,
+        "reportSequence": 5,
+        "intervalDurationTicks": 259870842,
+        "gc": {
+          "gen0Delta": 0,
+          "gen1Delta": 0,
+          "gen2Delta": 0,
+          "heapBytes": 1667579904,
+          "heapDeltaBytes": 8204288
+        },
+        "targets": [
+          {
+            "name": "AsyncPathProber.Manager.TickFrame",
+            "thread": "main",
+            "resolved": true,
+            "fastTrackPatched": false,
+            "externalPatched": false,
+            "patchOwners": [
+              "LIghtJUNction.CycleTrim"
+            ],
+            "calls": 1045,
+            "totalTicks": 679847,
+            "meanTicks": 650.571,
+            "maxTicks": 79634,
+            "intervalCalls": 779,
+            "intervalTotalTicks": 440347,
+            "intervalMeanTicks": 565.272
+          },
+          {
+            "name": "AsyncPathProber.WorkOrder.Execute",
+            "thread": "worker",
+            "resolved": true,
+            "fastTrackPatched": false,
+            "externalPatched": false,
+            "patchOwners": [
+              "LIghtJUNction.CycleTrim"
+            ],
+            "calls": 2088,
+            "totalTicks": 420634,
+            "meanTicks": 201.453,
+            "maxTicks": 6048,
+            "intervalCalls": 1558,
+            "intervalTotalTicks": 311477,
+            "intervalMeanTicks": 199.921
+          },
+          {
+            "name": "Navigator.UpdateProbe",
+            "thread": "main",
+            "resolved": true,
+            "fastTrackPatched": false,
+            "externalPatched": false,
+            "patchOwners": [
+              "LIghtJUNction.CycleTrim"
+            ],
+            "calls": 6135,
+            "totalTicks": 2896675,
+            "meanTicks": 472.156,
+            "maxTicks": 41970,
+            "intervalCalls": 4569,
+            "intervalTotalTicks": 1997286,
+            "intervalMeanTicks": 437.139
+          },
+          {
+            "name": "FetchManager.FetchablesByPrefabId.UpdatePickups",
+            "thread": "main",
+            "resolved": true,
+            "fastTrackPatched": false,
+            "externalPatched": false,
+            "patchOwners": [
+              "LIghtJUNction.CycleTrim"
+            ],
+            "calls": 1873,
+            "totalTicks": 276842,
+            "meanTicks": 147.807,
+            "maxTicks": 24249,
+            "intervalCalls": 1478,
+            "intervalTotalTicks": 192966,
+            "intervalMeanTicks": 130.559
+          },
+          {
+            "name": "ChoreConsumer.FindNextChore",
+            "thread": "main",
+            "resolved": true,
+            "fastTrackPatched": false,
+            "externalPatched": false,
+            "patchOwners": [
+              "LIghtJUNction.CycleTrim"
+            ],
+            "calls": 6270,
+            "totalTicks": 2670058,
+            "meanTicks": 425.847,
+            "maxTicks": 53191,
+            "intervalCalls": 4674,
+            "intervalTotalTicks": 1903780,
+            "intervalMeanTicks": 407.313
+          },
+          {
+            "name": "BrainScheduler.RenderEveryTick",
+            "thread": "main",
+            "resolved": true,
+            "fastTrackPatched": false,
+            "externalPatched": false,
+            "patchOwners": [
+              "LIghtJUNction.CycleTrim"
+            ],
+            "calls": 1045,
+            "totalTicks": 12834548,
+            "meanTicks": 12281.864,
+            "maxTicks": 356087,
+            "intervalCalls": 779,
+            "intervalTotalTicks": 8621559,
+            "intervalMeanTicks": 11067.47
+          },
+          {
+            "name": "RoomProber.Sim1000ms",
+            "thread": "main",
+            "resolved": true,
+            "fastTrackPatched": false,
+            "externalPatched": false,
+            "patchOwners": [
+              "LIghtJUNction.CycleTrim"
+            ],
+            "calls": 20,
+            "totalTicks": 273,
+            "meanTicks": 13.65,
+            "maxTicks": 211,
+            "intervalCalls": 13,
+            "intervalTotalTicks": 39,
+            "intervalMeanTicks": 3.0
+          }
+        ]
+      },
+      "resolvedTargetLogLines": 14,
+      "queueRewriteSkipWarnings": 0,
+      "limits": "Cumulative probe windows include paused main-loop work and startup; callback counts/timings were duplicated before the fix. Do not compare them as equivalent work or sum overlapping/parallel target times."
+    },
+    "rejectedCapture": "One intermediate candidate launch had CycleTrim disabled by native mod reinstall. It has no probe and was marked ineligible locally; it is excluded here.",
+    "conclusion": "Single installation verified; no repeat queue rewrite warning. Five guarded three-second samples each completed positive native progress and paused. Variable paging, one process per revision, small colony, opt-in probe overhead and a fixed 1x clock prevent a decision-grade simulation speedup or memory-saving claim."
+  },
+  "localVerification": {
+    "OniHarness": "12 C# behavioral checks, 10 Python checks, managed example and package boundaries passed",
+    "OniMods": "62/62 source/host checks passed; installed 744825 target contracts passed",
+    "regression": "Linked production ModInfo fails the new single-install test before the fix and passes after it",
+    "notRun": "No broad all-feature, late-game, Windows/macOS, memory-bandwidth/cache-counter or maximum-throughput acceptance"
+  },
+  "runtimeSourceSha256": {
+    "runtime/OniHarness.Runtime/Mod.cs": "1f85eb0df112d2fd13266a838b3846ba2b4d632cb9d253787c7ad73a2f7477ae",
+    "runtime/OniHarness.Runtime/ControlFileSignals.cs": "8e6103395a609f41b6e14b735e107fc91532767af10edf889a6d3e3f4563753a"
+  },
+  "cycleTrimLoaderSha256": "0f80365d74481b8167a7ff76e742160a9429f99da663e0479125b7a9b5c9b669",
+  "tracking": "AgentGC could not start: shared tracking database already exceeded its configured budget. No complete writer history is claimed."
+}
