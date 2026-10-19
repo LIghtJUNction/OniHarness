@@ -7,6 +7,7 @@ import http.server
 import json
 import math
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -94,6 +95,10 @@ def launch(args):
         raise RuntimeError("Steam client is required; direct game execution is never used")
     control = args.output.resolve()
     command = [steam, "-applaunch", "457140", "--oniharness-control", str(control), "-logFile", str(control / "player.log")]
+    for argument in args.game_arg:
+        if not re.fullmatch(r"--[A-Za-z][A-Za-z0-9_-]*(?:=[^\s\x00]+)?", argument) or argument.startswith("--oniharness-"):
+            raise ValueError("Pass a long mod option such as --cycletrim-perf-probe; Steam, Unity and harness launch controls are reserved")
+        command.append(argument)
     headless = args.graphics in ("none", "headless")
     if headless:
         command.extend(["-batchmode", "-nographics", "--oniharness-headless"])
@@ -130,6 +135,7 @@ def main():
     p.add_argument("--interval", type=int, choices=range(1, 121), default=60, metavar="1..120")
     p.add_argument("--update-rate", type=int, choices=range(15, 241), default=30, metavar="15..240")
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--game-arg", action="append", default=[], help="Forward a long mod option; repeat as --game-arg=--mod-option")
     p = commands.add_parser("render", help="Change companion render policy, without changing simulation speed")
     p.add_argument("mode", choices=["normal", "reduced"])
     p.add_argument("--interval", type=int, choices=range(1, 121), default=60, metavar="1..120")
@@ -203,6 +209,7 @@ def main():
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return
     if args.command == "step":
+        started = time.monotonic()
         if not 0 < args.seconds <= 10:
             raise ValueError("Smoke step must be between 0 and 10 wall seconds")
         client.call("game_control", {"domain": "speed", "action": "pause"})
@@ -217,6 +224,7 @@ def main():
         # Leave time to acknowledge the lease before starting, but bound a lost client.
         deadline = datetime.now(timezone.utc) + timedelta(seconds=args.seconds + 4)
         atomic_json(args.output / "run-lease.json", {"Id": lease_id, "DeadlineUtc": deadline.isoformat()})
+        lease_written = time.monotonic()
         acknowledgment_deadline = time.monotonic() + 2.5
         while time.monotonic() < acknowledgment_deadline:
             status = read_status(args.output)
@@ -225,6 +233,7 @@ def main():
             time.sleep(0.1)
         else:
             raise RuntimeError("Companion did not arm the stop deadline; game remains paused")
+        armed = time.monotonic()
         try:
             client.call("game_control", {"domain": "speed", "action": "set_speed", "speed": args.speed})
             resumed = client.call("game_control", {"domain": "speed", "action": "resume"})
@@ -237,8 +246,10 @@ def main():
             running = client.call("game_control", {"domain": "speed", "action": "time"})
             if running.get("isPaused") is not False:
                 raise RuntimeError("Native game pause remains. Inspect its cause; only for a known test pause use --release-native-pause.")
+            resumed_at = time.monotonic()
             time.sleep(args.seconds)
         finally:
+            pause_requested = time.monotonic()
             client.call("game_control", {"domain": "speed", "action": "pause"})
         after = client.call("game_control", {"domain": "speed", "action": "time"})
         if after.get("isPaused") is not True:
@@ -257,6 +268,11 @@ def main():
         record = {"capturedAt": datetime.now(timezone.utc).isoformat(), "tool": "bounded_smoke_step",
                   "wallSeconds": args.seconds, "speed": args.speed, "before": before, "after": after,
                   "simulationSecondsAdvanced": advanced, "releasedNativePause": args.release_native_pause}
+        record["timings"] = {"initialPauseSeconds": lease_written - started,
+                             "leaseAcknowledgmentSeconds": armed - lease_written,
+                             "resumeSeconds": resumed_at - armed,
+                             "runningWallSeconds": pause_requested - resumed_at,
+                             "pauseVerificationSeconds": time.monotonic() - pause_requested}
         atomic_json(args.output / "action.json", record)
         print(json.dumps(record, ensure_ascii=False, indent=2))
 

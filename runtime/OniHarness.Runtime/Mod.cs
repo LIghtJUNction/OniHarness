@@ -74,6 +74,11 @@ namespace OniHarness.Runtime
         private int pid;
         private bool headlessRequested;
         private bool headless;
+        private ControlFileSignals controls;
+        private bool statusWritten;
+        private Game lastGame;
+        private bool? lastPaused;
+        private int lastDuplicants;
 
         public void Initialize(string directory, bool requireHeadless)
         {
@@ -86,6 +91,8 @@ namespace OniHarness.Runtime
             originalTargetRate = Application.targetFrameRate;
             originalVSync = QualitySettings.vSyncCount;
             Application.runInBackground = true;
+            try { controls = new ControlFileSignals(root); }
+            catch (Exception ex) { Debug.LogWarning("[OniHarness] Control notifications unavailable; keeping 1s polling: " + ex.Message); }
             Camera.onPostRender += RecordCameraRender;
             Debug.Log("[OniHarness] Runtime companion active; headless=" + headless + "; simulation remains native.");
         }
@@ -107,7 +114,14 @@ namespace OniHarness.Runtime
                 SpeedControlScreen.Instance.Pause(playSound: false);
                 deadlinePauseScreen = SpeedControlScreen.Instance;
             }
-            if (root == null || Time.realtimeSinceStartup < nextCheck) return;
+            if (root == null) return;
+            bool changed = controls != null && controls.Consume();
+            bool? pausedNow = SpeedControlScreen.Instance == null ? (bool?)null : SpeedControlScreen.Instance.IsPaused;
+            bool transition = !statusWritten || !ReferenceEquals(lastGame, Game.Instance) ||
+                lastPaused != pausedNow || lastDuplicants != Components.LiveMinionIdentities.Count;
+            // Wake promptly for a new lease or pause transition, but keep the
+            // periodic reconciliation if file notifications are delayed/lost.
+            if (!changed && !transition && Time.realtimeSinceStartup < nextCheck) return;
             nextCheck = Time.realtimeSinceStartup + 1f;
             try
             {
@@ -176,6 +190,7 @@ namespace OniHarness.Runtime
                     gameError = Mod.GameError,
                     skippedVisualInitializers = HeadlessVisuals.SkippedInitializers,
                     disabledVideoPlayers = HeadlessVisuals.DisabledVideoPlayers,
+                    controlNotifications = controls != null,
                     mode,
                     renderInterval = OnDemandRendering.renderFrameInterval,
                     updateRate,
@@ -199,6 +214,10 @@ namespace OniHarness.Runtime
                 var destination = Path.Combine(root, "status.json");
                 if (File.Exists(destination)) File.Replace(temp, destination, null);
                 else File.Move(temp, destination);
+                statusWritten = true;
+                lastGame = Game.Instance;
+                lastPaused = SpeedControlScreen.Instance == null ? (bool?)null : SpeedControlScreen.Instance.IsPaused;
+                lastDuplicants = Components.LiveMinionIdentities.Count;
             }
             catch (Exception ex)
             {
@@ -209,6 +228,7 @@ namespace OniHarness.Runtime
         private void OnDestroy()
         {
             if (root == null) return;
+            controls?.Dispose();
             Camera.onPostRender -= RecordCameraRender;
             OnDemandRendering.renderFrameInterval = originalInterval;
             QualitySettings.vSyncCount = originalVSync;

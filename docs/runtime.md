@@ -91,6 +91,11 @@ colony; check OniMcp's launch state before testing. File control is local and
 single-controller; use a distinct `--output` directory per session. The default
 is `artifacts/runtime`. All later commands must use the same output directory.
 
+For an installed mod's explicit diagnostic option, use repeatable long arguments,
+for example `launch --game-arg=--cycletrim-perf-probe`. Short Steam/Unity options
+and reserved `--oniharness-*` controls cannot be overridden this way. This does
+not install CycleTrim or enable its probe during ordinary launches.
+
 Only in an explicitly graphical session, switch render policy in the same process:
 
 ```bash
@@ -119,6 +124,44 @@ render-engine time (deduplicated by client ID; unavailable is null). This tests
 paused drawing overhead, not active-colony FPS or simulation throughput. It
 rejects stale/unpaused state, retains partial failures, and restores the original
 requested render policy. Use `--output` to select the active session directory.
+
+## Measure the optimization loop
+
+With a fresh paused, loaded disposable save, run:
+
+```bash
+python3 scripts/measure_steps.py --label baseline --samples 5 --warmup 1 --seconds 3
+```
+
+The script performs bounded native steps and records every sample, including
+native-clock advancement, game-process CPU time, resident/swap memory, major
+page faults, update frames, and the step's control-phase timings. It requires
+positive native progress and a verified final pause; an error retains a failed
+report. This measures the complete guarded step, including client startup,
+control acknowledgment and pause verification. It is not a maximum-throughput
+benchmark or an FPS measurement. A shorter acknowledgment is a harness latency
+improvement, not evidence of faster simulation.
+
+When testing an opt-in probe, add
+`--require-log-marker '[CycleTrim][PerfProbe] resolved target:'` to refuse a run
+where that marker is absent from the active session's log. Inspect the actual
+enabled mod list as well: ONI can disable a changed local mod during its native
+reinstall flow. Exit and deliberately re-enable the discovered entry; never
+compare an unloaded candidate. A startup marker alone does not certify every
+patch or mod feature.
+
+Control-file notifications wake the companion on the game thread; background
+watcher callbacks only set a flag. Pause/load transitions also publish status
+promptly. The one-second reconciliation and every-update stop deadline remain
+in place if notifications are unavailable or lost. Status reports
+`controlNotifications`; compare the same save, enabled mods, speed and update cap.
+
+Repeat baseline/candidate runs with warmup and inspect dispersion and paging.
+Large fault/swap differences or concurrent host load invalidate a simple CPU
+speedup conclusion. A small test colony does not establish late-game performance.
+Managed heap size and RSS are not allocation rate, memory bandwidth, cache misses,
+or memory saved by headless mode. Use the mod's opt-in probe to choose a hotspot,
+then rerun functional tests and the same native workload after a change.
 
 ## Use a disposable copy of a save
 
