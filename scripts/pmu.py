@@ -1,6 +1,5 @@
 """Linux x86-64 user-space hardware counters via perf_event_open; no perf CLI needed."""
 import ctypes
-import fcntl
 import os
 import platform
 import struct
@@ -8,6 +7,12 @@ import struct
 # linux/perf_event.h: hardware event IDs, not software event IDs.
 EVENTS = ("cycles", "instructions", "cacheReferences", "cacheMisses")
 CONFIGS = (0, 1, 2, 3)
+
+
+def _ioctl(*args):
+    # Import only when using the Linux adapter, not when importing metrics/tests.
+    import fcntl
+    return fcntl.ioctl(*args)
 
 
 class CounterGroup:
@@ -40,11 +45,11 @@ class CounterGroup:
         before = struct.unpack("Q" * (3 + len(EVENTS)), raw)
         self.started_times = before[1:3]
         # RESET clears counts, but Linux preserves cumulative enabled/running time.
-        fcntl.ioctl(self.fds[0], 0x2403, 1)  # RESET group
-        fcntl.ioctl(self.fds[0], 0x2400, 1)  # ENABLE group
+        _ioctl(self.fds[0], 0x2403, 1)  # RESET group
+        _ioctl(self.fds[0], 0x2400, 1)  # ENABLE group
 
     def stop(self):
-        fcntl.ioctl(self.fds[0], 0x2401, 1)  # DISABLE group
+        _ioctl(self.fds[0], 0x2401, 1)  # DISABLE group
         raw = os.read(self.fds[0], 24 + 8 * len(EVENTS))
         if len(raw) != 24 + 8 * len(EVENTS):
             raise RuntimeError("Incomplete PMU group read")
