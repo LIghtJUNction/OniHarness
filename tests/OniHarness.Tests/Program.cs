@@ -9,6 +9,24 @@ string scratch = Directory.CreateTempSubdirectory("oniharness-tests-").FullName;
 int passed = 0;
 try
 {
+    await Test("control notifications detect atomic leases and ignore telemetry writes", async () =>
+    {
+        string directory = Directory.CreateDirectory(Path.Combine(scratch, "control")).FullName;
+        using var signals = new OniHarness.Runtime.ControlFileSignals(directory);
+        Check.That(signals.Consume() && !signals.Consume(), "Initial control read was not requested once.");
+        File.WriteAllText(Path.Combine(directory, "status.json"), "{}");
+        await Task.Delay(100);
+        Check.That(!signals.Consume(), "Own status writes trigger control feedback.");
+        string temporary = Path.Combine(directory, "lease.tmp");
+        File.WriteAllText(temporary, "{}");
+        File.Move(temporary, Path.Combine(directory, "run-lease.json"));
+        await AwaitSignal(signals);
+        // A fresh observer cannot mistake a delayed create event for deletion.
+        using var deletionSignals = new OniHarness.Runtime.ControlFileSignals(directory);
+        Check.That(deletionSignals.Consume(), "Missing initial read.");
+        File.Delete(Path.Combine(directory, "run-lease.json"));
+        await AwaitSignal(deletionSignals);
+    });
     await Test("runtime hooks select the exact nongeneric overload", () =>
     {
         var method = OniHarness.Runtime.RuntimeMethods.RequireNonGeneric(typeof(UiFactoryFixture), "Create", typeof(object), typeof(bool));
@@ -119,6 +137,16 @@ finally
 }
 
 async Task Test(string name, Func<Task> body) { await body(); passed++; Console.WriteLine("PASS: " + name); }
+async Task AwaitSignal(OniHarness.Runtime.ControlFileSignals signals)
+{
+    var deadline = Stopwatch.StartNew();
+    while (deadline.Elapsed.TotalSeconds < 3)
+    {
+        if (signals.Consume()) return;
+        await Task.Delay(5);
+    }
+    throw new InvalidOperationException("Control notification was not delivered.");
+}
 void Reject(Action action)
 {
     try { action(); } catch (Exception e) when (e is InvalidDataException or JsonException or NotSupportedException) { return; }

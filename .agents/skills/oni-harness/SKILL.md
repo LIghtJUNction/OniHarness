@@ -38,6 +38,14 @@ config or launch flag is not proof of savings. Keep normal/reduced/no-graphics
 results separate. Do not call untested features fully compatible. Logs, save
 paths and full observations remain private local artifacts unless sanitized.
 
+For an optimization iteration, use `scripts/measure_steps.py` on a paused
+disposable save, then inspect the mod's opt-in hotspot probe. Compare actual
+native progress, CPU per native second, control-phase timings, RSS/swap and major
+faults. Hold save/mods/speed/update cap fixed, warm up, repeat, and retain failed
+samples. Paging or host-load differences prevent a confident speedup claim.
+Shorter control waits are distinct from faster game simulation. See runtime.md
+for `--game-arg=--cycletrim-perf-probe`; never enable profiling by default.
+
 ## Locate and inspect
 
 Find the checkout in the current OniHarness repository, `tools/OniHarness` in

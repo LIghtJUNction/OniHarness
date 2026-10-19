@@ -15,9 +15,33 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from runtime import observe, main, read_status, validate_headless, wait_ready
 from runtime_mcp import Client
 from install_runtime import enable_entry
+from measure_steps import require_log_markers
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_measurement_rejects_an_unloaded_mod_before_starting_steps(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            (output / "player.log").write_text("Loaded companion only")
+            with self.assertRaisesRegex(RuntimeError, "marker is absent"):
+                require_log_markers(output, ["[CycleTrim][PerfProbe]"])
+            (output / "player.log").write_text("[CycleTrim][PerfProbe] resolved target")
+            require_log_markers(output, ["[CycleTrim][PerfProbe]"])
+
+    def test_mod_probe_option_is_forwarded_without_overriding_headless_controls(self):
+        with patch("runtime.game_pids", return_value=[]), patch("runtime.shutil.which", return_value="/fake/steam"), \
+                patch.object(sys, "argv", ["runtime.py", "launch", "--dry-run", "--game-arg=--cycletrim-perf-probe"]), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            main()
+        command = json.loads(out.getvalue())["command"]
+        self.assertIn("--cycletrim-perf-probe", command)
+        self.assertIn("-nographics", command)
+        for argument in ("-applaunch", "--oniharness-control=/elsewhere"):
+            with patch("runtime.game_pids", return_value=[]), patch("runtime.shutil.which", return_value="/fake/steam"), \
+                    patch.object(sys, "argv", ["runtime.py", "launch", "--dry-run", "--game-arg=" + argument]):
+                with self.assertRaisesRegex(ValueError, "reserved"):
+                    main()
+
     def test_launch_defaults_to_no_window_and_no_graphics_without_fallback(self):
         with patch("runtime.game_pids", return_value=[]), patch("runtime.shutil.which", return_value="/fake/steam"), \
                 patch.object(sys, "argv", ["runtime.py", "launch", "--dry-run"]), contextlib.redirect_stdout(io.StringIO()) as out, \
