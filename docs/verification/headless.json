@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "verifiedUtc": "2026-10-19T02:42:57.323423+00:00",
+  "evidence": "game-runtime-headless",
+  "platform": "Linux x64; Steam-launched native ONI",
+  "gameBuild": 744825,
+  "unity": "6000.3.5f2",
+  "sourceCommit": "1fec3c907eb80bf1549c78a0f9f56a85633d659a",
+  "sourceSha256": {
+    "runtime/OniHarness.Runtime/Mod.cs": "33a4e13126a0f41e13c349b28cb1b28ede33ae233f11727591509c2d1bf1d5be",
+    "runtime/OniHarness.Runtime/HeadlessVisuals.cs": "a1ede00404904f5426d17a329ea8b1afe83f0d910a8349643189fa4df9168c8c",
+    "runtime/OniHarness.Runtime/RuntimeMethods.cs": "9fecc9429915ecc32d84e9ef18b4467ac59a4ffe7593317875709205e67108cf",
+    "scripts/runtime.py": "f379a6995cded4d5176ba572008f8c3f354c8b57474b350ab70a5ce15975035d",
+    "scripts/install_runtime.py": "0a7e903c8d0f6cff65fc874b29ccb9c0f9e27e5e5f3d38d91ae3213946757424"
+  },
+  "installedCompanionSha256": "7c1490a7139d804c993f1a9aa92629c23da5ccf025378515c56cc1c85e127139",
+  "installedGameAssemblySha256": "6db652990ad1038e86b3493ed43004e12bfd61e62a4be60c787a9a9b9ac52ee1",
+  "mcpSourceCommit": "dc78d044776c09465eb97ef3e429976389afcc1d",
+  "installedMcpSha256": "e3da47890176a543452871380770aaf21e2fb5646a9957f0a3c3bc9ee5a57c55",
+  "engine": {
+    "batchMode": true,
+    "graphicsDevice": "Null",
+    "headlessRequested": true,
+    "cameraRenderCallbacks": 0,
+    "skippedVisualInitializers": 4,
+    "disabledVideoPlayers": 2,
+    "gameWindows": 0,
+    "drmFileDescriptors": 0
+  },
+  "fixture": {
+    "duplicants": 3,
+    "saveCopyLoaded": true,
+    "originalSaveHashUnchanged": true,
+    "description": "Existing three-duplicant development test save copy; pre-existing test-room objects. No spawning during validation; not a survival playthrough."
+  },
+  "step": {
+    "wallSeconds": 5.0,
+    "simulationSecondsAdvanced": 5.0155029296875,
+    "duplicantsWithCellChange": 1,
+    "pausedAfter": true
+  },
+  "clientLoss": {
+    "clientExit": -9,
+    "pausedByGameDeadline": true,
+    "pauseDelayAfterKillSeconds": 5.164505459004431,
+    "clockStableForSeconds": 2,
+    "gamePidUnchanged": true
+  },
+  "recovery": {
+    "simulationSecondsAdvanced": 1.0997314453125,
+    "releasedNativePause": false,
+    "pausedAfter": true
+  },
+  "handoff": {
+    "paused": true,
+    "leaseDisarmed": true
+  },
+  "limitations": [
+    "One installed build/save/mod combination; no full feature or all-mod compatibility claim.",
+    "No active-colony throughput speedup or memory-saving percentage measured.",
+    "Unity renderedFrameCount also advances under Null graphics; it is not proof of GPU drawing.",
+    "Desktop-free Steam/server deployment and Windows/macOS runtime are not verified.",
+    "Raw observations, saves, credentials and decompiled source remain private."
+  ]
+}

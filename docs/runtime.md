@@ -7,6 +7,12 @@ The original game-free/native tests remain available and never launch the game.
 It is not included in the original v0.1.0 packages. Linux runtime support is
 experimental; a successful startup does not certify every game/mod feature.
 
+[Verified headless run](verification/headless.json) records a loaded three-duplicant
+test save, positive native-clock progress and duplicant movement, zero camera
+render callbacks, no OS game window or DRM descriptor, and client-loss stop/recovery.
+It is one build/save/mod combination, not complete feature coverage or a measured
+whole-game speedup.
+
 [Earlier reduced-render verification](verification/runtime.json) includes a real save
 copy, native clock/duplicant movement, a killed-client stop/recovery test, the
 browser's exact-map check and a short paused ABBA rendering comparison. Those
