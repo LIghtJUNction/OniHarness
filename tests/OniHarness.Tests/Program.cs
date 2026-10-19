@@ -9,6 +9,18 @@ string scratch = Directory.CreateTempSubdirectory("oniharness-tests-").FullName;
 int passed = 0;
 try
 {
+    await Test("runtime hooks select the exact nongeneric overload", () =>
+    {
+        var method = OniHarness.Runtime.RuntimeMethods.RequireNonGeneric(typeof(UiFactoryFixture), "Create", typeof(object), typeof(bool));
+        Check.That((string)method.Invoke(null, [new object(), true])! == "native-ui", "Selected a generic or unrelated overload.");
+        try
+        {
+            OniHarness.Runtime.RuntimeMethods.RequireNonGeneric(typeof(UiFactoryFixture), "Create", typeof(int));
+            throw new InvalidOperationException("Missing signature was accepted.");
+        }
+        catch (MissingMethodException) { }
+        return Task.CompletedTask;
+    });
     await Test("invalid scenarios are rejected before native execution", () =>
     {
         Reject(() => new Scenario { Width = -1 }.Validate());
@@ -118,4 +130,11 @@ Task<ProcessOutcome> Cli(params string[] arguments)
     start.ArgumentList.Add(cli);
     foreach (string argument in arguments) start.ArgumentList.Add(argument);
     return ProcessRunner.RunAsync(start, TimeSpan.FromSeconds(10));
+}
+
+static class UiFactoryFixture
+{
+    public static string Create(object original, bool active) => "native-ui";
+    public static T Create<T>(object original, bool active) => default!;
+    public static string Create(string original, bool active) => "other-overload";
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Explicit Steam launch, reduced rendering, paused observations and optional text spectator."""
+"""Steam-launched headless ONI, paused observations and an optional text spectator."""
 import argparse
 from datetime import datetime, timezone, timedelta
 import functools
@@ -17,6 +17,40 @@ from install_runtime import game_pids
 from runtime_mcp import Client, atomic_json
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def validate_headless(status):
+    if (status.get("batchMode") is not True or status.get("graphicsDevice") != "Null" or
+            status.get("headless") is not True or status.get("headlessRequested") is not True or
+            status.get("cameraRenderCallbacks") != 0 or status.get("gameHasCrash") is not False or
+            status.get("error") or status.get("gameError")):
+        raise RuntimeError("Headless verification failed: require batch mode, Null graphics, zero camera renders and no game crash; no graphical fallback")
+
+
+def read_status(directory):
+    directory = Path(directory)
+    data = json.loads((directory / "status.json").read_text(encoding="utf-8"))
+    age = (datetime.now(timezone.utc) - datetime.fromisoformat(data["capturedAt"].replace("Z", "+00:00"))).total_seconds()
+    if not 0 <= age <= 5 or data["pid"] not in game_pids():
+        raise RuntimeError("Companion status is stale or the game exited")
+    if data.get("error") or data.get("gameHasCrash") or data.get("gameError"):
+        raise RuntimeError("Runtime failed: " + str(data.get("error") or data.get("gameError") or "native game crash") + "; inspect failure.json and player.log")
+    receipt = directory / "launch.json"
+    if receipt.exists() and json.loads(receipt.read_text())["graphics"] in ("none", "headless"):
+        validate_headless(data)
+    return data
+
+
+def wait_ready(directory, timeout):
+    deadline = time.monotonic() + timeout
+    last_error = "no companion telemetry"
+    while time.monotonic() < deadline:
+        try:
+            return read_status(directory)
+        except (OSError, ValueError, KeyError, RuntimeError) as ex:
+            last_error = str(ex)
+        time.sleep(.25)
+    raise RuntimeError("Startup did not verify: " + last_error + "; inspect player.log and steam-launch.log. No fallback or restart was performed.")
 
 
 def observe(client, directory, intent="Read-only observation", bounds=None):
@@ -60,20 +94,28 @@ def launch(args):
         raise RuntimeError("Steam client is required; direct game execution is never used")
     control = args.output.resolve()
     command = [steam, "-applaunch", "457140", "--oniharness-control", str(control), "-logFile", str(control / "player.log")]
-    if args.graphics == "none":
-        command.extend(["-batchmode", "-nographics"])
+    headless = args.graphics in ("none", "headless")
+    if headless:
+        command.extend(["-batchmode", "-nographics", "--oniharness-headless"])
     if args.dry_run:
         print(json.dumps({"dryRun": True, "command": command}, ensure_ascii=False, indent=2))
         return
+    if (control / "run-lease.json").exists():
+        raise RuntimeError("Output contains an old run lease; archive it while paused or use a new output directory")
     args.output.mkdir(parents=True, exist_ok=True)
-    atomic_json(control / "render.json", {"mode": "normal" if args.graphics == "normal" else "reduced", "interval": args.interval, "updateRate": args.update_rate})
+    atomic_json(control / "render.json", {"mode": "headless" if headless else args.graphics, "interval": args.interval, "updateRate": args.update_rate})
     atomic_json(control / "launch.json", {"requestedAt": datetime.now(timezone.utc).isoformat(), "graphics": args.graphics,
                                          "command": command, "status": "requested", "note": "Launch request is not proof of loaded gameplay or reduced rendering."})
     log = (control / "steam-launch.log").open("ab")
     process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
     log.close()
     print(json.dumps({"launchRequested": True, "steamLauncherPid": process.pid, "graphicsRequested": args.graphics,
-                      "verify": str(control / "status.json"), "note": "Check live companion status; no compatibility result is implied."}))
+                      "verify": str(control / "status.json")}), flush=True)
+    status = wait_ready(control, args.timeout)
+    atomic_json(control / "ready.json", {"verifiedAt": datetime.now(timezone.utc).isoformat(), "status": status,
+                                         "note": "Engine readiness only; load and test a disposable save separately."})
+    print(json.dumps({"ready": True, "pid": status["pid"], "headless": status.get("headless"),
+                      "graphicsDevice": status["graphicsDevice"], "gameLoaded": status["gameLoaded"]}))
 
 
 def main():
@@ -82,7 +124,9 @@ def main():
     parser.add_argument("--output", type=Path, default=ROOT / "artifacts/runtime")
     commands = parser.add_subparsers(dest="command", required=True)
     p = commands.add_parser("launch", help="Explicitly launch the real game through Steam")
-    p.add_argument("--graphics", choices=["normal", "reduced", "none"], default="reduced")
+    p.add_argument("--graphics", choices=["headless", "normal", "reduced", "none"], default="headless",
+                   help="Default: headless (no window or graphics device); none is an alias")
+    p.add_argument("--timeout", type=float, default=120, help="Seconds to await verified companion readiness (1..300)")
     p.add_argument("--interval", type=int, choices=range(1, 121), default=60, metavar="1..120")
     p.add_argument("--update-rate", type=int, choices=range(15, 241), default=30, metavar="15..240")
     p.add_argument("--dry-run", action="store_true")
@@ -106,16 +150,17 @@ def main():
     p.add_argument("--port", type=int, default=8790)
     args = parser.parse_args()
     if args.command == "launch":
+        if not 1 <= args.timeout <= 300:
+            parser.error("--timeout must be 1..300 seconds")
         return launch(args)
     if args.command == "render":
+        if read_status(args.output).get("headless"):
+            raise RuntimeError("A headless process has no graphics device; changing to graphical mode requires an explicit exit and relaunch")
         atomic_json(args.output / "render.json", {"mode": args.mode, "interval": args.interval, "updateRate": args.update_rate})
         print("Requested", args.mode, "rendering. Confirm mode, renderInterval and fresh timestamp with status.")
         return
     if args.command == "status":
-        data = json.loads((args.output / "status.json").read_text(encoding="utf-8"))
-        age = (datetime.now(timezone.utc) - datetime.fromisoformat(data["capturedAt"].replace("Z", "+00:00"))).total_seconds()
-        if age > 5 or data["pid"] not in game_pids():
-            raise RuntimeError("Companion status is stale or the game exited")
+        data = read_status(args.output)
         print(json.dumps(data, indent=2))
         return
     if args.command == "serve":
@@ -133,6 +178,10 @@ def main():
         with http.server.ThreadingHTTPServer(("127.0.0.1", args.port), handler) as server:
             server.serve_forever()
         return
+    # A requested headless session must stay verified before any observation/action.
+    receipt = args.output / "launch.json"
+    if receipt.exists() and json.loads(receipt.read_text())["graphics"] in ("none", "headless"):
+        read_status(args.output)
     client = Client(args.url, os.environ.get("ONIHARNESS_MCP_TOKEN"))
     if args.command == "observe":
         data = observe(client, args.output, args.intent, args.bounds)
@@ -161,7 +210,7 @@ def main():
         if before.get("isPaused") is not True:
             raise RuntimeError("Initial pause was not verified")
         status_path = args.output / "status.json"
-        status = json.loads(status_path.read_text(encoding="utf-8"))
+        status = read_status(args.output)
         if status.get("pid") not in game_pids() or not status.get("gameLoaded"):
             raise RuntimeError("A live loaded companion is required for bounded stepping")
         lease_id = uuid.uuid4().hex
@@ -170,7 +219,7 @@ def main():
         atomic_json(args.output / "run-lease.json", {"Id": lease_id, "DeadlineUtc": deadline.isoformat()})
         acknowledgment_deadline = time.monotonic() + 2.5
         while time.monotonic() < acknowledgment_deadline:
-            status = json.loads(status_path.read_text(encoding="utf-8"))
+            status = read_status(args.output)
             if status.get("leaseId") == lease_id:
                 break
             time.sleep(0.1)
@@ -196,7 +245,7 @@ def main():
             raise RuntimeError("Pause after smoke step was not verified")
         refresh_deadline = time.monotonic() + 2.5
         while time.monotonic() < refresh_deadline:
-            final_status = json.loads(status_path.read_text(encoding="utf-8"))
+            final_status = read_status(args.output)
             if final_status.get("paused") and final_status["capturedAt"] != status["capturedAt"]:
                 break
             time.sleep(.1)

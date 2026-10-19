@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../runtime/OniHarness.Runtime/RuntimeMethods.cs" Link="RuntimeMethods.cs" />
     <ProjectReference Include="../../src/OniHarness.Core/OniHarness.Core.csproj" />
     <ProjectReference Include="../../src/OniHarness.Cli/OniHarness.Cli.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../RunnerFixtures/RunnerFixtures.csproj" ReferenceOutputAssembly="false" />

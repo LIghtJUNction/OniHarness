@@ -2,7 +2,8 @@
 
 The table below describes the original game-free/native v0.1.0 harness.
 The source checkout also provides an experimental [real-game workflow](runtime.md)
-with explicit Steam launch, an optional rendering companion and text spectator.
+with explicit Steam launch, default no-window/Null-device headless mode, an
+optional graphical rendering mode and text spectator.
 That mode uses the actual game/Unity runtime; startup is not full compatibility
 evidence. Runtime observations and resource measurements are separate from the
 fixture results below. CLI/Core v0.1.0 package behavior is unchanged.

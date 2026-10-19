@@ -10,6 +10,9 @@ namespace OniHarness.Runtime
 {
     public sealed class Mod : UserMod2
     {
+        private static string controlRoot;
+        internal static string GameError;
+
         public override void OnLoad(Harmony harmony)
         {
             base.OnLoad(harmony);
@@ -19,9 +22,36 @@ namespace OniHarness.Runtime
             if (index < 0 || index + 1 >= args.Length) return;
             var root = Path.GetFullPath(args[index + 1]);
             Directory.CreateDirectory(root);
+            controlRoot = root;
+            bool headless = Array.IndexOf(args, "--oniharness-headless") >= 0;
+            if (headless && Application.isBatchMode && SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
+                HeadlessVisuals.Install(harmony);
+            harmony.Patch(AccessTools.Method(typeof(KCrashReporter), "ShowDialog"),
+                prefix: new HarmonyMethod(typeof(Mod), nameof(TraceError)));
+            harmony.Patch(AccessTools.Method(typeof(App), "QuitCode"),
+                prefix: new HarmonyMethod(typeof(Mod), nameof(TraceQuit)));
             var owner = new GameObject("OniHarness.Runtime");
             UnityEngine.Object.DontDestroyOnLoad(owner);
-            owner.AddComponent<RenderController>().Initialize(root);
+            owner.AddComponent<RenderController>().Initialize(root, headless);
+        }
+
+        private static void TraceQuit(int exitCode)
+        {
+            Debug.LogWarning("[OniHarness] Exit " + exitCode + "; crash=" + KCrashReporter.hasCrash + "\n" + Environment.StackTrace);
+        }
+
+        private static void TraceError(string error, string stack_trace)
+        {
+            if (GameError != null) return;
+            GameError = error;
+            try
+            {
+                File.WriteAllText(Path.Combine(controlRoot, "failure.json"), JsonConvert.SerializeObject(new
+                {
+                    capturedAt = System.DateTime.UtcNow.ToString("o"), error, stackTrace = stack_trace
+                }));
+            }
+            catch (Exception ex) { Debug.LogWarning("[OniHarness] Failure receipt write failed: " + ex.Message); }
         }
     }
 
@@ -42,10 +72,14 @@ namespace OniHarness.Runtime
         private int cameraRenderFrames;
         private int lastCameraFrame = -1;
         private int pid;
+        private bool headlessRequested;
+        private bool headless;
 
-        public void Initialize(string directory)
+        public void Initialize(string directory, bool requireHeadless)
         {
             root = directory;
+            headlessRequested = requireHeadless;
+            headless = Application.isBatchMode && SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null;
             using (var process = System.Diagnostics.Process.GetCurrentProcess()) pid = process.Id;
             originalInterval = OnDemandRendering.renderFrameInterval;
             originalBackground = Application.runInBackground;
@@ -53,7 +87,7 @@ namespace OniHarness.Runtime
             originalVSync = QualitySettings.vSyncCount;
             Application.runInBackground = true;
             Camera.onPostRender += RecordCameraRender;
-            Debug.Log("[OniHarness] Runtime companion active; simulation remains native.");
+            Debug.Log("[OniHarness] Runtime companion active; headless=" + headless + "; simulation remains native.");
         }
 
         private void RecordCameraRender(Camera camera)
@@ -81,25 +115,31 @@ namespace OniHarness.Runtime
                 var settings = File.Exists(path)
                     ? JsonConvert.DeserializeObject<RenderSettings>(File.ReadAllText(path))
                     : new RenderSettings();
-                if (settings == null || (settings.Mode != "normal" && settings.Mode != "reduced") ||
+                if (settings == null || (settings.Mode != "normal" && settings.Mode != "reduced" && settings.Mode != "headless") ||
                     settings.Interval < 1 || settings.Interval > 120 || settings.UpdateRate < 15 || settings.UpdateRate > 240)
-                    throw new InvalidDataException("Mode must be normal/reduced, interval 1..120 and update rate 15..240.");
-                mode = settings.Mode;
+                    throw new InvalidDataException("Mode must be normal/reduced/headless, interval 1..120 and update rate 15..240.");
+                if ((headlessRequested || settings.Mode == "headless") && !headless)
+                    throw new InvalidDataException("Headless requires batch mode and a Null graphics device; no graphical fallback.");
+                mode = headless ? "headless" : settings.Mode;
                 updateRate = settings.UpdateRate;
-                OnDemandRendering.renderFrameInterval = mode == "normal" ? originalInterval : settings.Interval;
+                OnDemandRendering.renderFrameInterval = headless ? 1 : mode == "normal" ? originalInterval : settings.Interval;
                 QualitySettings.vSyncCount = mode == "normal" ? originalVSync : 0;
                 Application.targetFrameRate = mode == "normal" ? originalTargetRate : updateRate;
                 error = null;
             }
             catch (Exception ex)
             {
-                // A malformed control file restores the original rendering policy.
-                mode = "normal";
+                // Policy cannot create a graphics device in a headless process.
+                mode = headless ? "headless" : "normal";
                 OnDemandRendering.renderFrameInterval = originalInterval;
                 QualitySettings.vSyncCount = originalVSync;
                 Application.targetFrameRate = originalTargetRate;
                 error = ex.Message;
             }
+            if (KCrashReporter.hasCrash || Mod.GameError != null)
+                error = Mod.GameError ?? "The native game reported a crash; inspect player.log.";
+            if (error != null && SpeedControlScreen.Instance != null && !SpeedControlScreen.Instance.IsPaused)
+                SpeedControlScreen.Instance.Pause(playSound: false);
             try
             {
                 var leasePath = Path.Combine(root, "run-lease.json");
@@ -129,6 +169,13 @@ namespace OniHarness.Runtime
                     pid,
                     unity = Application.unityVersion,
                     graphicsDevice = SystemInfo.graphicsDeviceType.ToString(),
+                    batchMode = Application.isBatchMode,
+                    headlessRequested,
+                    headless,
+                    gameHasCrash = KCrashReporter.hasCrash,
+                    gameError = Mod.GameError,
+                    skippedVisualInitializers = HeadlessVisuals.SkippedInitializers,
+                    disabledVideoPlayers = HeadlessVisuals.DisabledVideoPlayers,
                     mode,
                     renderInterval = OnDemandRendering.renderFrameInterval,
                     updateRate,

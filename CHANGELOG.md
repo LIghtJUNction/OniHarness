@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Default real-game launches to verified batch/Null-device headless mode, without
+  a game window or graphical fallback. Capture native error-dialog details
+  without suppressing native crash handling.
 - Add an explicit experimental Steam-launched real-game workflow, optional
   Unity rendering companion, bounded smoke steps and a read-only text spectator
   sharing the AI's recorded map. Native fixtures remain game-free. See

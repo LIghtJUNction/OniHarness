@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build and enable the optional companion from the user's installed Linux ONI files."""
 import argparse
+from datetime import date
 import json
 from pathlib import Path
 import shutil
@@ -36,6 +37,8 @@ def main():
     parser.add_argument("--game-path", required=True, type=Path)
     parser.add_argument("--mods-dir", required=True, type=Path, help="ONI user data's mods directory")
     parser.add_argument("--dlc", default="EXPANSION1_ID", help="DLC id to enable; use an empty string for base game")
+    parser.add_argument("--backup-dir", type=Path, default=Path.home() / "Backups/OniHarness/runtime" / date.today().isoformat(),
+                        help="Directory for the original mod manifest; defaults to ~/Backups/OniHarness/runtime/YYYY-MM-DD")
     args = parser.parse_args()
     if game_pids():
         raise RuntimeError("Exit ONI before installing; no running game will be stopped automatically")
@@ -55,7 +58,7 @@ def main():
         raise RuntimeError("Existing companion directory has unknown files; preserve it and inspect first")
     subprocess.run(["dotnet", "build", "runtime/OniHarness.Runtime", "-c", "Release",
                     "-p:OniGamePath=" + str(args.game_path.resolve()), "--nologo"], cwd=ROOT, check=True)
-    backup = ROOT / "artifacts/runtime-install" / ("mods-before-" + uuid.uuid4().hex + ".json")
+    backup = args.backup_dir / ("mods-before-" + uuid.uuid4().hex + ".json")
     backup.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(manifest, backup)
     folder.mkdir(parents=True, exist_ok=True)
