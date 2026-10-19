@@ -1,0 +1,3 @@
+<Project>
+  <!-- Do not inherit MSBuild defaults from an unrelated extraction parent. -->
+</Project>
