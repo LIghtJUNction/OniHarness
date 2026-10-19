@@ -9,6 +9,9 @@ confirmed external upstream defects; preserve third-party terms and secrets.
 - Real-game tests are a separate, explicit mode. Launch ONI through Steam only;
   keep it paused for observations/actions and verify after short bounded steps.
   Rendering controls must not replace simulation, AI, lifecycle or physics logic.
+  Headless means batch mode plus a Null graphics device and zero camera renders;
+  reduced rendering is graphical. Never substitute a graphical fallback for a
+  failed headless test or claim full compatibility from startup alone.
 - Never use SteamCMD or publish Workshop content here.
 - Use only the user's installed game files for authorized local native tests; no binary mirrors or downloads.
 - Never commit game DLLs/assets, decompiled implementation, credentials or saves.

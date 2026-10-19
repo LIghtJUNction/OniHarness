@@ -6,14 +6,55 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
+import contextlib
+import io
+from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from runtime import observe
+from runtime import observe, main, read_status, validate_headless, wait_ready
 from runtime_mcp import Client
 from install_runtime import enable_entry
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_launch_defaults_to_no_window_and_no_graphics_without_fallback(self):
+        with patch("runtime.game_pids", return_value=[]), patch("runtime.shutil.which", return_value="/fake/steam"), \
+                patch.object(sys, "argv", ["runtime.py", "launch", "--dry-run"]), contextlib.redirect_stdout(io.StringIO()) as out, \
+                patch("runtime.subprocess.Popen") as start:
+            main()
+        command = json.loads(out.getvalue())["command"]
+        self.assertEqual(command[:3], ["/fake/steam", "-applaunch", "457140"])
+        for argument in ("-batchmode", "-nographics", "--oniharness-headless"):
+            self.assertIn(argument, command)
+        start.assert_not_called()
+        with patch("runtime.game_pids", return_value=[42]), patch.object(sys, "argv", ["runtime.py", "launch", "--dry-run"]):
+            with self.assertRaisesRegex(RuntimeError, "already running"):
+                main()
+
+    def test_headless_rejects_graphical_or_incomplete_or_crashed_telemetry(self):
+        status = {"batchMode": True, "graphicsDevice": "Null", "headless": True,
+                  "headlessRequested": True, "cameraRenderCallbacks": 0, "gameHasCrash": False, "error": None}
+        validate_headless(status)
+        for key, value in [("graphicsDevice", "OpenGLCore"), ("batchMode", False),
+                           ("headlessRequested", False), ("cameraRenderCallbacks", 1),
+                           ("gameHasCrash", True), ("error", "native failure"), ("gameError", "native dialog")]:
+            with self.subTest(key=key), self.assertRaisesRegex(RuntimeError, "Headless verification failed"):
+                validate_headless({**status, key: value})
+        with self.assertRaisesRegex(RuntimeError, "Headless verification failed"):
+            validate_headless({"graphicsDevice": "Null"})
+
+    def test_live_status_requires_freshness_and_startup_timeout_never_relaunches(self):
+        with tempfile.TemporaryDirectory() as temp, patch("runtime.game_pids", return_value=[42]):
+            path = Path(temp) / "status.json"
+            path.write_text(json.dumps({"pid": 42, "capturedAt": (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat()}))
+            with self.assertRaisesRegex(RuntimeError, "stale"):
+                read_status(temp)
+            with patch("runtime.time.monotonic", side_effect=[0, 0, 2]), patch("runtime.time.sleep"), patch("runtime.subprocess.Popen") as start:
+                with self.assertRaisesRegex(RuntimeError, "No fallback or restart"):
+                    wait_ready(temp, 1)
+                start.assert_not_called()
+
     def test_enable_discovered_local_entry_with_null_dlc_list(self):
         entry = {"enabled": False, "enabledForDlc": None, "staticID": "existing", "label": {"version": 12}}
         enable_entry(entry, "EXPANSION1_ID")

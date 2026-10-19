@@ -1,11 +1,13 @@
-# Real-game testing and optional AI text view
+# Headless gameplay and optional AI text view
 
-This source-checkout addition runs the real ONI game and Unity through Steam.
+This source-checkout addition runs the real ONI game and Unity through Steam,
+without a game window or graphics device by default. A game process is required
+for native colony logic; this is distinct from the game-free fixture host.
 The original game-free/native tests remain available and never launch the game.
 It is not included in the original v0.1.0 packages. Linux runtime support is
 experimental; a successful startup does not certify every game/mod feature.
 
-[Recorded local verification](verification/runtime.json) includes a real save
+[Earlier reduced-render verification](verification/runtime.json) includes a real save
 copy, native clock/duplicant movement, a killed-client stop/recovery test, the
 browser's exact-map check and a short paused ABBA rendering comparison. Those
 observations apply to that installation/workload, not every colony or mod.
@@ -14,14 +16,34 @@ observations apply to that installation/workload, not every colony or mod.
 
 | Option | What it does |
 | --- | --- |
-| `launch --graphics normal` | Original render interval; useful as a baseline |
+| `launch` / `launch --graphics headless` | Default: `-batchmode -nographics`; requires batch mode, a Null graphics device, zero camera render callbacks and no native crash |
+| `launch --graphics none` | Compatibility alias for `headless` |
+| `launch --graphics normal` | Explicit graphical client, original render interval; useful as a baseline |
 | `launch --graphics reduced --interval 60 --update-rate 30` | Optional companion asks Unity to draw every 60 update frames and caps background updates at 30/sec |
-| `launch --graphics none` | Explicit experimental `-batchmode -nographics`; may break graphics-dependent game/mod code |
 | `observe --view none` | Record paused game data without terminal map output; default |
 | `observe --view text` | Also print the exact map returned to the AI |
 | `serve` | Optional read-only browser text spectator of recorded observations |
 
-Reduced rendering uses [Unity OnDemandRendering](https://docs.unity3d.com/6000.3/Documentation/ScriptReference/Rendering.OnDemandRendering.html).
+Headless mode uses the [Unity Player command-line options](https://docs.unity3d.com/6000.3/Documentation/Manual/PlayerCommandLineArguments.html).
+It is not a hidden/minimized window, an Xvfb display or a reduced-render client.
+The optional text spectator is a separate HTTP page; opening it does not enable
+game graphics. Assets and game-side animation bookkeeping can still load/run;
+memory savings and compatibility of visual mods are not guaranteed. Steam must
+still be reachable; a desktop-free Steam/server deployment is not verified.
+
+The headless companion skips presentation initializers: the gamepad cursor
+render overlay (which tries to allocate a zero-size render target in batch mode),
+menu video creation, the menu intro and the liquid renderer's multi-target
+command buffer (unsupported by the Null device). These entrypoints require validation
+after a game update. UI video-player children are deactivated before native
+cloning as well, since in-game scheduled UI also creates a video panel.
+Game simulation, AI, chores and physics are not patched.
+
+The companion records native error dialogs in private `failure.json`, including
+their actual message and stack trace. Native error handling is preserved; a
+headless request does not authorize suppressing crashes or dismissing errors.
+
+Reduced rendering is a separate **graphical** option using [Unity OnDemandRendering](https://docs.unity3d.com/6000.3/Documentation/ScriptReference/Rendering.OnDemandRendering.html).
 It does not replace or patch simulation, AI, chores, building lifecycle, save
 loading, physics or game speed. It retains the graphics device and game assets.
 Reduced mode disables VSync and explicitly caps the update loop (30/sec by
@@ -38,27 +60,32 @@ own compatibility tests. Memory savings are not guaranteed.
 
 Use your own installed game, an existing Steam login and enabled OniMcp.
 Exit ONI before installing. This installs only the companion's own DLL and
-metadata under `mods/Local`, backs up `mods.json` inside ignored `artifacts`,
-and enables only the companion entry. Other mod entries are preserved. No
+metadata under `mods/Local`, backs up `mods.json`,
+and enables only the companion entry. New manifest backups go to
+`~/Backups/OniHarness/runtime/YYYY-MM-DD` (`--backup-dir` overrides it).
+Other mod entries are preserved. No
 game/Unity DLLs are copied. The companion changes nothing during ordinary
 launches without `--oniharness-control PATH`.
 
 ```bash
 python3 scripts/install_runtime.py --game-path /path/to/OxygenNotIncluded \
   --mods-dir "/path/to/ONI-user-data/mods"
-python3 scripts/runtime.py launch --graphics reduced --interval 60
+python3 scripts/runtime.py launch
 python3 scripts/runtime.py status
 ```
 
 The installer defaults to `EXPANSION1_ID`; pass `--dlc ''` for base game.
 Steam must be reachable in the current desktop session. No direct executable
 fallback, automatic restart or SteamCMD exists. Launch refuses an existing ONI
-process. A launch receipt means requested, not loaded. Check a fresh companion
-status and OniMcp's launch state before testing. File control is local and
+process. Launch waits up to 120 seconds for a fresh, live companion status
+(`--timeout 1..300` changes this). A headless launch fails unless telemetry
+confirms batch mode, Null graphics and zero camera renders. There is no automatic
+graphical fallback or restart. `ready.json` proves engine readiness, not a loaded
+colony; check OniMcp's launch state before testing. File control is local and
 single-controller; use a distinct `--output` directory per session. The default
 is `artifacts/runtime`. All later commands must use the same output directory.
 
-Switch render policy in the same running process:
+Only in an explicitly graphical session, switch render policy in the same process:
 
 ```bash
 python3 scripts/runtime.py render normal
@@ -67,7 +94,13 @@ python3 scripts/runtime.py render reduced --interval 60
 python3 scripts/runtime.py status
 ```
 
-`status` rejects stale files/exited PIDs. Confirm `mode`, `renderInterval`,
+Headless sessions cannot switch to graphical rendering without an explicit exit
+and relaunch. Do not reuse an output directory with an old run lease. Archive
+the completed lease while paused, or choose a fresh directory.
+
+`status` rejects stale files/exited PIDs and invalid headless telemetry. Headless
+observations and actions perform the same check. Confirm `headless`, `batchMode`,
+`graphicsDevice`, `cameraRenderCallbacks`, `mode`, `renderInterval`,
 `gameLoaded` and `error`; a config write alone proves no effect. Camera callback
 counters are diagnostics, not an FPS counter or an overall speedup. Preserve the
 original mode for comparison. Removing the launch argument restores ordinary

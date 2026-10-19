@@ -1,13 +1,16 @@
 # OniHarness
 
-**ONI mod testing, with game-free fixtures and explicit real-game runs.**
+**ONI mod testing, with game-free fixtures and real headless gameplay.**
 
 [简体中文](README_ZH.md) · [Real-game / text view](docs/runtime.md) · [Architecture](docs/architecture.md) · [Supported capabilities](docs/capabilities.md)
 
-For complete gameplay behavior, use the experimental [real-game workflow](docs/runtime.md):
-start ONI through Steam, preserve native simulation and optionally reduce Unity
-drawing. An optional text spectator displays the exact observations returned to
-the AI. Compatibility and performance need testing per game/save/mod combination.
+For native colony gameplay, use the experimental [headless workflow](docs/runtime.md):
+Steam starts the real ONI engine with **no game window and no graphics device**.
+`python3 scripts/runtime.py launch` defaults to `-batchmode -nographics` and
+requires verified engine telemetry. It never falls back to a graphical client.
+An optional text spectator displays the exact observations returned to the AI.
+Compatibility needs testing per game/save/mod combination; this is not a claim
+that every mod or graphics-dependent feature works headlessly.
 
 The original harness runs small, repeatable tests in isolated worker processes. It can drive
 the **real installed ONI native simulation library** without launching ONI,

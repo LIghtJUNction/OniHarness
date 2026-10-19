@@ -14,6 +14,7 @@
     <Reference Include="Assembly-CSharp-firstpass" HintPath="$(ManagedPath)/Assembly-CSharp-firstpass.dll" Private="false" />
     <Reference Include="0Harmony" HintPath="$(ManagedPath)/0Harmony.dll" Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedPath)/UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.VideoModule" HintPath="$(ManagedPath)/UnityEngine.VideoModule.dll" Private="false" />
     <Reference Include="Newtonsoft.Json" HintPath="$(ManagedPath)/Newtonsoft.Json.dll" Private="false" />
   </ItemGroup>
   <Target Name="RequireInstalledGame" BeforeTargets="ResolveReferences">

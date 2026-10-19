@@ -1,6 +1,6 @@
 ---
 name: oni-harness
-description: Test ONI mods with OniHarness using game-free native fixtures or explicit Steam-launched real-game tests with reduced rendering and an optional AI text-map spectator. Use for headless testing, rendering-cost checks, recorded physics experiments and shared AI observations.
+description: Test ONI mods with game-free native fixtures or Steam-launched headless gameplay without a window or graphics device, plus an optional AI text-map spectator. Use for headless tests, real colony smoke steps, rendering checks and shared AI observations.
 ---
 
 # OniHarness
@@ -12,9 +12,14 @@ with full-game compatibility.
 
 ## Real-game route
 
-For gameplay, reduced drawing or watching AI text maps, read `docs/runtime.md`.
+For headless gameplay or watching AI text maps, read `docs/runtime.md`.
 It describes `scripts/install_runtime.py` and explicit `scripts/runtime.py`
 commands. Start the actual game through Steam only. Verify a fresh companion
+status with `batchMode=true`, `graphicsDevice=Null`, `headless=true` and zero
+camera renders; `launch` now selects this mode by default. A hidden/minimized
+window or reduced drawing does not pass. Never fall back to a graphical launch
+when headless fails. `--graphics normal|reduced` explicitly requests graphics.
+Engine readiness is separate from loading and actually stepping a colony. Verify
 status, exact save/mod combination and paused loaded state. Use a disposable
 save copy and short guarded steps. Do not spawn resources or duplicants.
 
