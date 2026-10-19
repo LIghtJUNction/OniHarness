@@ -17,7 +17,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--game-path")
     args = parser.parse_args()
-    run("dotnet", "build", "OniHarness.slnx", "-c", "Release", "--nologo")
+    # A single MSBuild node also works on hosts that prohibit IPC sockets.
+    run("dotnet", "build", "OniHarness.slnx", "-c", "Release", "--nologo", "-m:1")
     run("dotnet", "run", "--project", "tests/OniHarness.Tests", "-c", "Release", "--no-build")
     run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_runtime.py")
     cli = ["dotnet", "run", "--project", "src/OniHarness.Cli", "-c", "Release", "--no-build", "--"]
