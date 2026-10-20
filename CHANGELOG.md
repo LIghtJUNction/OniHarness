@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add the separately versioned `oniharness` Python 0.1.0 package, developed with
+  uv and Python 3.15: isolated CLI tests with retained failure reports, bounded
+  process-tree cleanup, loopback JSON/SSE/TOON MCP transport, pause-verified
+  observations, runnable examples, Python package verification and PyPI workflow.
+
 - Default real-game launches to verified batch/Null-device headless mode, without
   a game window or graphical fallback. Capture native error-dialog details
   without suppressing native crash handling.

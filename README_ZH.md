@@ -1,5 +1,12 @@
 # OniHarness
 
+## Python 库
+
+`uv add oniharness` 或 `uv pip install oniharness` 安装。
+使用 uv + Python 3.15 开发，提供原生 JSON/C# 测试和先暂停再读取 OniMcp 的接口。
+原生测试需要单独的 .NET 后端和本机游戏文件。
+完整说明和可运行示例见 [Python 使用指南](docs/python.md)。
+
 **《缺氧》Mod 测试工具：独立物理用例，以及运行真实游戏逻辑的无头模式。**
 
 [English](README.md) · [能力边界](docs/capabilities.md) · [架构](docs/architecture.md)

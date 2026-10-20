@@ -4,6 +4,14 @@
 
 [简体中文](README_ZH.md) · [Real-game / text view](docs/runtime.md) · [Architecture](docs/architecture.md) · [Supported capabilities](docs/capabilities.md)
 
+## Python API
+
+Use `uv add oniharness` (or `uv pip install oniharness`) to drive native JSON/C#
+tests and pause-verified OniMcp observations from Python. Development uses
+Python 3.15 and uv. Native tests require the separate .NET backend and your local
+game installation; paused game observations connect to an already running OniMcp.
+See the [Python guide and runnable examples](docs/python.md).
+
 For native colony gameplay, use the experimental [headless workflow](docs/runtime.md):
 Steam starts the real ONI engine with **no game window and no graphics device**.
 `python3 scripts/runtime.py launch` defaults to `-batchmode -nographics` and

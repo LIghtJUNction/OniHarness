@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "oniharness"
+version = "0.1.0"
+description = "Python API for OniHarness native mod tests and paused OniMcp observations"
+readme = "python/README.md"
+requires-python = ">=3.10"
+license = "LicenseRef-AUL-1.0-draft.1"
+license-files = ["LICENSE", "LICENSING.md", "UPSTREAM.toml"]
+authors = [{ name = "LIghtJUNction" }]
+dependencies = ["toon-format==1.2.0"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.15",
+  "Topic :: Software Development :: Testing",
+]
+
+[project.urls]
+Homepage = "https://github.com/LIghtJUNction/OniHarness"
+Documentation = "https://github.com/LIghtJUNction/OniHarness/blob/main/docs/python.md"
+Issues = "https://github.com/LIghtJUNction/OniHarness/issues"
+Source = "https://github.com/LIghtJUNction/OniHarness"
+
+[tool.hatch.build.targets.wheel]
+packages = ["python/src/oniharness"]
+
+[tool.hatch.build.targets.sdist]
+only-include = ["pyproject.toml", ".python-version", "uv.lock", "python", "examples/python", "docs/python.md", "LICENSE", "LICENSING.md", "UPSTREAM.toml"]
+exclude = ["**/__pycache__", "**/*.pyc"]
+
+[dependency-groups]
+dev = ["build>=1.2,<2", "twine>=6,<7", "ruff>=0.11,<1"]
