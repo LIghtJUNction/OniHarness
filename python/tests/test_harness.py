@@ -59,7 +59,7 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(report.tests[0]["name"], "氧气测试 $(never-execute)")
         self.assertEqual(report.tests[0]["fingerprint"], "abc")
         self.assertEqual(report.tests[0]["evidence"], "native-sim")
-        self.assertEqual(json.loads(output.read_text()), report.data)
+        self.assertEqual(json.loads(output.read_text(encoding="utf-8")), report.data)
         self.assertEqual(report.stdout.strip(), "worker output")
 
     def test_all_worker_failure_statuses_remain_failures_and_report_survives(self):
@@ -93,7 +93,9 @@ class HarnessTests(unittest.TestCase):
 
     def test_doctor_passes_game_path_as_one_argument(self):
         game = self.directory / "game path"
-        self.assertEqual(self.harness(game_path=game).doctor()["gamePath"], str(game))
+        self.assertEqual(
+            self.harness(game_path=game).doctor()["gamePath"], str(game.resolve())
+        )
 
     def test_missing_metadata_method_returns_false(self):
         value = self.harness("missing").contract(
@@ -143,7 +145,7 @@ class HarnessTests(unittest.TestCase):
                 ):
                     return
                 os.kill(pid, 0)
-            except ProcessLookupError:
+            except (ProcessLookupError, FileNotFoundError):
                 return
             time.sleep(0.02)
         self.fail("descendant worker survived timeout")
