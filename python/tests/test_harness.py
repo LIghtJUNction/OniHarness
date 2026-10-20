@@ -8,7 +8,14 @@ import time
 import unittest
 from pathlib import Path
 
-from oniharness import CommandError, Harness, HarnessError, TestFailure
+from oniharness import (
+    CommandError,
+    Harness,
+    HarnessError,
+    Scenario,
+    TestFailure,
+    expect,
+)
 
 BACKEND = """
 import json, os, pathlib, subprocess, sys, time
@@ -40,6 +47,13 @@ elif action == "test":
 
 
 class HarnessTests(unittest.TestCase):
+    def test_existing_harness_accepts_typed_scenarios(self):
+        report = self.harness().run_scenario(
+            Scenario(name="typed").expect(expect.mass_conserved())
+        )
+        self.assertTrue(report.passed)
+        self.assertEqual(report.tests[0]["name"], "typed")
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="oniharness test spaces ")
         self.addCleanup(self.temp.cleanup)

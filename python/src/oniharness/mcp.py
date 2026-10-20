@@ -2,15 +2,23 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 import math
+import os
 import re
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
-from typing import Any
+from functools import wraps
+from typing import Any, ParamSpec, TypeVar
+
+from ._version import __version__
+
+P = ParamSpec("P")
+T = TypeVar("T")
 
 PROTOCOL = "2025-11-25"
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
@@ -83,7 +91,9 @@ class McpClient:
                 "Use an HTTP loopback MCP URL without embedded credentials or a fragment"
             )
         self.url = url
-        self._token = token
+        self._token = (
+            token if token is not None else os.environ.get("ONIHARNESS_MCP_TOKEN")
+        )
         self.timeout = self._timeout(timeout)
         self.session: str | None = None
         self.protocol = PROTOCOL
@@ -96,7 +106,7 @@ class McpClient:
             {
                 "protocolVersion": PROTOCOL,
                 "capabilities": {},
-                "clientInfo": {"name": "oniharness-python", "version": "0.1.0"},
+                "clientInfo": {"name": "oniharness-python", "version": __version__},
             },
         )
         version = initialized.get("protocolVersion")
@@ -229,8 +239,45 @@ class McpClient:
 class Game:
     """Pause and observe an already running game. No automatic launch or resume."""
 
-    def __init__(self, client: McpClient):
-        self.client = client
+    def __init__(self, client: McpClient | None = None):
+        self.client = client if client is not None else McpClient()
+
+    def paused(self, function: Callable[P, T]) -> Callable[P, T]:
+        """Decorate a synchronous operation: verify pause before and in finally.
+
+        The function's return value, name and signature are preserved. A failed
+        initial pause prevents execution; exceptions still trigger a final pause.
+        This does not authorize writes or add a bounded resume/step mechanism.
+        """
+        if (
+            inspect.iscoroutinefunction(function)
+            or inspect.isgeneratorfunction(function)
+            or inspect.isasyncgenfunction(function)
+        ):
+            raise TypeError(
+                "@game.paused requires a synchronous, non-generator function"
+            )
+
+        @wraps(function)
+        def wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
+            self.pause()
+            try:
+                result = function(*args, **kwargs)
+                if (
+                    inspect.isawaitable(result)
+                    or inspect.isgenerator(result)
+                    or inspect.isasyncgen(result)
+                ):
+                    if inspect.iscoroutine(result) or inspect.isgenerator(result):
+                        result.close()
+                    raise TypeError(
+                        "@game.paused cannot return deferred async/generator work"
+                    )
+                return result
+            finally:
+                self.pause()
+
+        return wrapped
 
     def pause(self) -> dict[str, Any]:
         self.client.call_tool("game_control", {"domain": "speed", "action": "pause"})

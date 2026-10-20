@@ -2,7 +2,7 @@
 
 Run **Oxygen Not Included mod tests** from Python and read paused game
 observations through a local OniMcp server. Developed with **Python 3.15 and uv**;
-the Python API supports Python 3.10+. This is an early 0.1.0 preview.
+the Python API supports Python 3.10+. This is an early 0.2.0 preview.
 
 ```sh
 uv pip install oniharness
@@ -21,27 +21,37 @@ git clone https://github.com/LIghtJUNction/OniHarness.git
 ```
 
 ```python
-from oniharness import Harness
+from oniharness import Cell, Scenario, Suite, expect, parametrize
 
-harness = Harness.from_checkout(
-    "./OniHarness", build=True,
+suite = Suite(
+    checkout="./OniHarness", build=True,
     game_path="/path/to/OxygenNotIncluded",
 )
-print(harness.doctor()["adapter"])
 
-report = harness.run_scenario({
-    "name": "Sealed oxygen conserves mass",
-    "width": 16, "height": 16, "steps": 50,
-    "fill": {"element": "Oxygen", "mass": 1, "temperature": 300},
-    "assertions": [{"kind": "massConserved", "absoluteTolerance": 0.01}],
-}, repeat=3, report_path="results/oxygen.json")
+@suite.scenario(repeat=3)
+@parametrize(temperature=[280, 300, 320])
+@expect.mass_conserved()
+def oxygen(temperature):
+    return Scenario(fill=Cell("Oxygen", temperature=temperature))
 
-print(report.passed)
-for test in report.tests:
-    print(test["status"], test["evidence"], test["fingerprint"])
+print(suite.run(report_path="results/oxygen.json"))  # PASS: 9/9 tests passed
 ```
 
-If `oniharness` is already installed on PATH, use `Harness(game_path=...)`.
+Decorators register definitions; importing the test file never builds a backend
+or runs physics. `suite.run()` prepares every selected definition before any
+backend execution, then uses isolated CLI workers. Each parameter combination
+has a readable case name. `suite.run(filter="temperature=300")` selects one.
+Decorator order is flexible. Multiple/stacked parameter axes form a Cartesian
+product. Empty selections and duplicate case names are explicit errors.
+
+Assertions work both as decorators and values:
+`Scenario().expect(expect.mass_conserved())`. `Cell`, `Region` and `Scenario`
+describe fixture inputs; the backend performs the physical/schema validation.
+`expect` also provides `total_mass`, `cell_mass` and `cell_temperature`, with
+`min` and/or `max` bounds. `report.save(path)` atomically saves the JSON report.
+
+The original `Harness` API remains available. If `oniharness` is already
+installed on PATH, use `Harness(game_path=...)` or `Suite(game_path=...)`.
 Use `test_scenarios(path)` for JSON files/directories and
 `test_assembly(path, filter="...")` for trusted C# test assemblies.
 
@@ -62,12 +72,10 @@ Installation and explicit Steam launch are described in the
 [runtime guide](https://github.com/LIghtJUNction/OniHarness/blob/main/docs/runtime.md).
 
 ```python
-import os
-from oniharness import Game, McpClient
+from oniharness import Game
 
-client = McpClient(token=os.environ.get("ONIHARNESS_MCP_TOKEN"))
-print([tool["name"] for tool in client.list_tools()])
-observation = Game(client).observe()  # pauses, verifies pause, reads near camera
+game = Game()  # connects locally; reads ONIHARNESS_MCP_TOKEN when set
+observation = game.observe()  # pauses, verifies pause, reads near camera
 print(observation["map"]["text"])
 print(observation["dupes"])
 ```
@@ -77,7 +85,12 @@ coordinates, up to 1600 cells. No game launch, resume or camera movement occurs.
 JSON, SSE and TOON responses are decoded; tool errors raise `McpError`.
 Connections accept HTTP loopback addresses only, with no proxies or redirects.
 
-`client.call_tool(name, arguments)` exposes the installed tool catalog directly.
+For a composed synchronous operation, `@game.paused` verifies pause before the
+body and again in `finally`, including when the body raises. It preserves the
+function's name, signature and return value. Async/generator work is rejected
+so it cannot escape the pause scope. This is not a bounded stepping API.
+
+`game.client.call_tool(name, arguments)` exposes the installed tool catalog directly.
 This low-level API can write to the game and does **not** add pause protection;
 use the usual pause → observe → plan → act → short run → pause → verify loop.
 

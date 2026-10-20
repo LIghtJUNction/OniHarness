@@ -1,6 +1,7 @@
 """Exercise the public API over real local HTTP, JSON, SSE and TOON."""
 
 import http.server
+import inspect
 import json
 import os
 import threading
@@ -54,6 +55,114 @@ def endpoint(responder):
 
 
 class McpTests(unittest.TestCase):
+    def test_token_defaults_to_environment_and_game_can_connect_itself(self):
+        with (
+            endpoint(lambda *_: {"tools": []}) as (url, seen),
+            patch.dict(os.environ, {"ONIHARNESS_MCP_TOKEN": "environment-test-only"}),
+        ):
+            client = McpClient(url)
+            client.list_tools()
+            self.assertEqual(
+                seen[-1][1]["Authorization"], "Bearer environment-test-only"
+            )
+            with patch("oniharness.mcp.McpClient", return_value=client) as connect:
+                game = Game()
+            self.assertIs(game.client, client)
+            connect.assert_called_once_with()
+
+    def test_paused_decorator_preserves_return_and_verifies_before_and_after(self):
+        with endpoint(lambda *_: {"structuredContent": {"isPaused": True}}) as (
+            url,
+            seen,
+        ):
+            game = Game(McpClient(url))
+
+            @game.paused
+            def operation(value: int = 3) -> int:
+                """Operation documentation."""
+                self.assertEqual(seen[-1][0]["params"]["arguments"]["action"], "time")
+                return value * 2
+
+            self.assertEqual(operation(4), 8)
+            self.assertEqual(operation.__name__, "operation")
+            self.assertEqual(operation.__doc__, "Operation documentation.")
+            self.assertEqual(
+                str(inspect.signature(operation)), "(value: int = 3) -> int"
+            )
+            actions = [
+                message["params"]["arguments"]["action"]
+                for message, _ in seen
+                if message["method"] == "tools/call"
+            ]
+            self.assertEqual(actions, ["pause", "time", "pause", "time"])
+
+    def test_paused_decorator_attempts_final_pause_on_exception(self):
+        with endpoint(lambda *_: {"structuredContent": {"isPaused": True}}) as (
+            url,
+            seen,
+        ):
+            game = Game(McpClient(url))
+
+            @game.paused
+            def broken():
+                raise ValueError("body failed")
+
+            with self.assertRaisesRegex(ValueError, "body failed"):
+                broken()
+            actions = [
+                message["params"]["arguments"]["action"]
+                for message, _ in seen
+                if message["method"] == "tools/call"
+            ]
+            self.assertEqual(actions, ["pause", "time", "pause", "time"])
+
+    def test_failed_pause_blocks_body_and_failed_final_pause_is_not_success(self):
+        statuses = iter([False, True, False])
+        called = []
+
+        def respond(message, handler):
+            args = message["params"]["arguments"]
+            return {
+                "structuredContent": {
+                    "isPaused": next(statuses) if args["action"] == "time" else True
+                }
+            }
+
+        with endpoint(respond) as (url, _):
+            game = Game(McpClient(url))
+
+            @game.paused
+            def operation():
+                called.append(True)
+
+            with self.assertRaisesRegex(McpError, "Pause was not verified"):
+                operation()
+            self.assertEqual(called, [])
+            with self.assertRaisesRegex(McpError, "Pause was not verified"):
+                operation()
+            self.assertEqual(called, [True])
+
+    def test_paused_decorator_rejects_delayed_work(self):
+        with endpoint(lambda *_: {"structuredContent": {"isPaused": True}}) as (url, _):
+            game = Game(McpClient(url))
+
+            async def asynchronous():
+                return 1
+
+            def generator():
+                yield 1
+
+            for function in (asynchronous, generator):
+                with self.assertRaisesRegex(TypeError, "synchronous"):
+                    game.paused(function)
+
+            @game.paused
+            def delayed():
+                return asynchronous()
+
+            with self.assertRaisesRegex(TypeError, "deferred"):
+                delayed()
+
     def test_handshake_session_token_proxy_bypass_and_structured_result(self):
         def respond(message, handler):
             return {

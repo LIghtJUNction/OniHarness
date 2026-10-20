@@ -1,11 +1,22 @@
 # Changelog
 
-## Unreleased
+## Python 0.2.0 — 2026-10-20
+
+- Add lazy `Suite` collection with `@suite.scenario`, composable `@parametrize`
+  and `@expect` assertions. Native runs keep their worker isolation and original
+  evidence; definition errors are detected before backend execution.
+- Add immutable `Cell`, `Region` and `Scenario` inputs, atomic report saving,
+  concise report summaries, and `@game.paused` with verified final pause.
+- Support `Game()` and environment-token defaults, preserving the Python 0.1 API.
+
+## Python 0.1.0 — 2026-10-20
 
 - Add the separately versioned `oniharness` Python 0.1.0 package, developed with
   uv and Python 3.15: isolated CLI tests with retained failure reports, bounded
   process-tree cleanup, loopback JSON/SSE/TOON MCP transport, pause-verified
   observations, runnable examples, Python package verification and PyPI workflow.
+
+## Unreleased
 
 - Default real-game launches to verified batch/Null-device headless mode, without
   a game window or graphical fallback. Capture native error-dialog details

@@ -18,6 +18,7 @@ jobs:
           uv run python -c 'import os, tomllib; v=tomllib.load(open("pyproject.toml", "rb"))["project"]["version"]; assert os.environ["GITHUB_REF_NAME"] == "python-v" + v'
       - run: uv run python -m unittest discover -s python/tests -v
       - run: uv run ruff check python/src python/tests examples/python
+      - run: uv run mypy --python-version 3.10 python/src/oniharness
       - run: uv build --out-dir artifacts/python
       - run: uv run twine check artifacts/python/*
       - run: uv run python scripts/verify_python_distribution.py artifacts/python

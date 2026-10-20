@@ -20,7 +20,69 @@ uv sync --python 3.15
 uv run python -m unittest discover -s python/tests -v
 ```
 
-## 不启动游戏，运行物理场景
+## 用装饰器写测试
+
+配置一次，登记测试，最后 `suite.run()`。导入文件、应用装饰器时不会构建后端或运行物理测试。
+下面的例子在三种温度下各运行三次，共九个独立 worker：
+
+```python
+from oniharness import Cell, Scenario, Suite, expect, parametrize
+
+suite = Suite(
+    checkout="/path/to/OniHarness", build=True,
+    game_path="/path/to/OxygenNotIncluded",
+)
+
+@suite.scenario(repeat=3)
+@parametrize(temperature=[280, 300, 320])
+@expect.mass_conserved()
+@expect.cell_temperature(8, 8, min=270, max=330)
+def oxygen(temperature):
+    return Scenario(fill=Cell("Oxygen", temperature=temperature))
+
+print(suite.run(report_path="results/oxygen.json"))
+# PASS: 9/9 tests passed
+```
+
+- `@suite.scenario` 可以裸用，也可以指定 `name`、`repeat`、`timeout`。
+- `@parametrize(temperature=[280, 300], mass=[1, 2])` 产生四种组合；叠加多个装饰器也是组合相乘。
+- `@expect.mass_conserved(tolerance=0.01)` 检查质量守恒。
+- `@expect.total_mass(min=..., max=...)`、`@expect.cell_mass(x, y, ...)`、
+  `@expect.cell_temperature(x, y, ...)` 检查最终值范围，至少提供一个边界。
+
+装饰器的上下顺序可以互换，原函数仍然是普通的场景工厂，签名和文档保留。
+工厂只应构造并返回 `Scenario` 或原有 JSON 字典；定义阶段不是模拟执行阶段。
+`Suite` 用函数名命名用例，`@suite.scenario(name="...")` 可以覆盖；参数自动追加到名字中。
+`suite.run(filter="temperature=300")` 只准备、运行匹配的用例。空筛选结果、重复名字、
+参数不匹配或错误返回值会抛出带用例名的 `DefinitionError`，在任何原生测试开始前停止。
+不支持异步或生成器场景工厂。
+
+`Scenario`、`Cell`、`Region` 是不可变的输入对象，使用 Kelvin、kg 和格坐标。
+后端负责验证完整物理规则。断言也可以直接附在场景上：
+
+```python
+from oniharness import Cell, Region, Scenario, expect
+
+base = Scenario(
+    fill=Cell("Vacuum", mass=0),
+    regions=(Region(2, 3, width=4, height=2, cell=Cell("Water", mass=1000)),),
+)
+checked = base.expect(expect.mass_conserved())  # 返回新场景，不修改 base
+```
+
+可以 `Suite(existing_harness)` 复用已配置的 `Harness`；也可以 `Suite()` 使用 PATH 上的 CLI。
+`Suite` 构建后端和各个 worker 的规则与原有接口相同。运行时测试失败会继续收集后续用例，
+保存报告后再抛出 `TestFailure`；`check=False` 返回失败报告供检查。配置/命令错误仍会中止。
+`report.save(path)` 原子写入 JSON；`print(report)` 显示通过数，原始证据仍在 `report.tests`。
+
+完整脚本：[decorated_scenarios.py](../examples/python/decorated_scenarios.py)：
+
+```sh
+uv run --python 3.15 python examples/python/decorated_scenarios.py \
+  --build --game-path /path/to/OxygenNotIncluded
+```
+
+## 原有底层接口
 
 需要 .NET SDK 10、OniHarness 源码或单独安装的 CLI，以及本机正版游戏文件。
 wheel 不包含 .NET 后端和游戏文件。首次从源码构建后端用 `build=True`；
@@ -110,11 +172,36 @@ print(observation["dupes"])
 客户端只允许 HTTP 回环地址，禁用代理和重定向；支持 JSON、SSE 和 TOON。
 工具或协议失败抛出 `McpError`。不要并发共享同一个客户端。
 
+### 暂停装饰器
+
+`Game()` 可以直接连接默认地址，自动读取 `ONIHARNESS_MCP_TOKEN`。
+自定义地址仍可传 `Game(McpClient(url, ...))`。
+
+```python
+from oniharness import Game
+
+game = Game()
+
+@game.paused
+def colony_summary():
+    return game.client.call_tool(
+        "world_editor", {"command": "read", "path": "/active/index.md"},
+    )
+
+print(colony_summary())
+```
+
+运行函数前暂停并读回确认；成功返回或抛出异常时，都会再次尝试暂停并确认。
+第一次暂停失败不会执行函数体，最后暂停失败也不会报告成功。
+保留返回值、签名和文档，不自动恢复游戏。函数必须同步执行，不能返回待执行的协程或生成器。
+装饰器不授权危险写入，也不替代有停止保护的短步运行流程。
+
 ## 构建与发布
 
 ```sh
 uv sync --python 3.15 --locked
 uv run python -m unittest discover -s python/tests -v
+uv run mypy --python-version 3.10 python/src/oniharness
 uv build --out-dir artifacts/python
 uv run twine check artifacts/python/*
 uv run python scripts/verify_python_distribution.py artifacts/python

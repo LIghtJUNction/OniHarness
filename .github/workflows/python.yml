@@ -20,6 +20,7 @@ jobs:
       - run: uv sync --locked --python ${{ matrix.python }}
       - run: uv run --python ${{ matrix.python }} python -m unittest discover -s python/tests -v
       - run: uv run --python ${{ matrix.python }} ruff check python/src python/tests examples/python
+      - run: uv run --python ${{ matrix.python }} mypy --python-version ${{ matrix.python }} python/src/oniharness
       - run: uv build --out-dir artifacts/python
       - run: uv run --python ${{ matrix.python }} twine check artifacts/python/*
       - run: uv run --python ${{ matrix.python }} python scripts/verify_python_distribution.py artifacts/python

@@ -8,11 +8,14 @@ import os
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from .scenario import Scenario
 
 
 class HarnessError(RuntimeError):
@@ -57,6 +60,32 @@ class TestReport:
         if not self.passed:
             raise TestFailure(self)
 
+    def __str__(self) -> str:
+        count = sum(test.get("status") == "passed" for test in self.tests)
+        return f"{'PASS' if self.passed else 'FAIL'}: {count}/{len(self.tests)} tests passed"
+
+    def save(self, path: str | os.PathLike[str]) -> Path:
+        """Atomically save the original JSON report, including failed results."""
+        output = Path(path).expanduser().resolve()
+        output.parent.mkdir(parents=True, exist_ok=True)
+        temporary: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=output.parent,
+                prefix=output.name + ".",
+                suffix=".tmp",
+                delete=False,
+            ) as stream:
+                temporary = Path(stream.name)
+                stream.write(json.dumps(self.data, ensure_ascii=False, indent=2) + "\n")
+            temporary.replace(output)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+        return output
+
 
 class TestFailure(HarnessError):
     """A failed, unsupported, crashed, timed-out or empty test run."""
@@ -79,10 +108,10 @@ def _positive_timeout(value: float) -> float:
 
 def _run(command: Sequence[str], timeout: float) -> subprocess.CompletedProcess[str]:
     options: dict[str, Any] = {}
-    if os.name == "posix":
-        options["start_new_session"] = True
-    elif os.name == "nt":
+    if sys.platform == "win32":
         options["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+    elif os.name == "posix":
+        options["start_new_session"] = True
     try:
         process = subprocess.Popen(
             list(command),
@@ -102,18 +131,18 @@ def _run(command: Sequence[str], timeout: float) -> subprocess.CompletedProcess[
         stdout, stderr = process.communicate(timeout=timeout)
     except BaseException as error:
         # The CLI owns native workers. Terminate its descendants as well as the parent.
-        if os.name == "posix":
-            try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-        elif os.name == "nt":
+        if sys.platform == "win32":
             subprocess.run(
                 ["taskkill", "/PID", str(process.pid), "/T", "/F"],
                 capture_output=True,
                 timeout=10,
                 check=False,
             )
+        elif os.name == "posix":
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
         process.kill()
         process.communicate()
         if isinstance(error, subprocess.TimeoutExpired):
@@ -240,13 +269,16 @@ class Harness:
             raise HarnessError("CLI did not produce a JSON object")
         return value
 
-    def run_scenario(self, scenario: Mapping[str, Any], **options: Any) -> TestReport:
+    def run_scenario(
+        self, scenario: Scenario | Mapping[str, Any], **options: Any
+    ) -> TestReport:
         """Run an in-memory scenario through a temporary JSON file and fresh workers."""
         with tempfile.TemporaryDirectory(prefix="oniharness-python-") as directory:
             path = Path(directory) / "scenario.json"
-            path.write_text(
-                json.dumps(dict(scenario), allow_nan=False), encoding="utf-8"
+            data = (
+                scenario.to_dict() if isinstance(scenario, Scenario) else dict(scenario)
             )
+            path.write_text(json.dumps(data, allow_nan=False), encoding="utf-8")
             return self.test_scenarios(path, **options)
 
     def test_scenarios(
@@ -322,11 +354,7 @@ class Harness:
         report = TestReport(data, result.returncode, result.stdout, result.stderr)
         # Retain failed reports before raising, without overwriting an old result on setup failure.
         if report_path is not None:
-            output = Path(report_path).expanduser().resolve()
-            output.parent.mkdir(parents=True, exist_ok=True)
-            output.write_text(
-                json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-            )
+            report.save(report_path)
         if check:
             report.raise_for_status()
         return report
