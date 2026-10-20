@@ -319,7 +319,7 @@ class SuiteTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "report.json"
             output.write_text("old report", encoding="utf-8")
-            self.assertEqual(report.save(output), output)
+            self.assertTrue(report.save(output).samefile(output))
             self.assertEqual(
                 json.loads(output.read_text(encoding="utf-8")), report.data
             )
