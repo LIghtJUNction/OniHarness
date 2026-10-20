@@ -28,8 +28,10 @@ Source = "https://github.com/LIghtJUNction/OniHarness"
 
 [tool.hatch.build.targets.wheel]
 packages = ["python/src/oniharness"]
+core-metadata-version = "2.4"
 
 [tool.hatch.build.targets.sdist]
+core-metadata-version = "2.4"
 only-include = ["pyproject.toml", ".python-version", "uv.lock", "python", "examples/python", "docs/python.md", "LICENSE", "LICENSING.md", "UPSTREAM.toml"]
 exclude = ["**/__pycache__", "**/*.pyc"]
 
