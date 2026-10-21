@@ -8,6 +8,9 @@
     <Version>0.1.0</Version>
     <Authors>LIghtJUNction</Authors>
     <RepositoryUrl>https://github.com/LIghtJUNction/OniHarness</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/LIghtJUNction/OniHarness</PackageProjectUrl>
+    <PackageTags>oxygen-not-included;oni;modding;testing;headless</PackageTags>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Headless test harness for Oxygen Not Included mods.</Description>
@@ -15,5 +18,7 @@
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="/" />
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/" />
+    <None Include="$(MSBuildThisFileDirectory)LICENSING.md" Pack="true" PackagePath="/" />
+    <None Include="$(MSBuildThisFileDirectory)UPSTREAM.toml" Pack="true" PackagePath="/" />
   </ItemGroup>
 </Project>

@@ -23,6 +23,7 @@ namespace OniHarness.Runtime
             var root = Path.GetFullPath(args[index + 1]);
             Directory.CreateDirectory(root);
             controlRoot = root;
+            InstanceControl.Install(root);
             bool headless = Array.IndexOf(args, "--oniharness-headless") >= 0;
             if (headless && Application.isBatchMode && SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
                 HeadlessVisuals.Install(harmony);
@@ -190,6 +191,7 @@ namespace OniHarness.Runtime
                     gameError = Mod.GameError,
                     skippedVisualInitializers = HeadlessVisuals.SkippedInitializers,
                     disabledVideoPlayers = HeadlessVisuals.DisabledVideoPlayers,
+                    skippedTimelapseCaptures = HeadlessVisuals.SkippedTimelapseCaptures,
                     controlNotifications = controls != null,
                     mode,
                     renderInterval = OnDemandRendering.renderFrameInterval,

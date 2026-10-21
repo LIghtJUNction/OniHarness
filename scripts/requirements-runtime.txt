@@ -1,0 +1,2 @@
+# Official TOON decoder; optional for JSON-only servers, needed for current OniMcp.
+toon-format==1.2.0 --hash=sha256:d94db4b088a281a7bbc85e75d7fbd24e6a0ec7bc110edb129285259eca6522c0

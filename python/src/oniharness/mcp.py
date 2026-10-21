@@ -7,15 +7,21 @@ import json
 import math
 import os
 import re
+import tempfile
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
 from functools import wraps
+from importlib import import_module
+from pathlib import Path
 from typing import Any, ParamSpec, TypeVar
+from uuid import uuid4
 
 from ._version import __version__
+from .notebook import MAX_FRAME_BYTES, GameFrame
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -287,6 +293,92 @@ class Game:
         if not isinstance(status, dict) or status.get("isPaused") is not True:
             raise McpError("Pause was not verified; observation aborted")
         return status
+
+    def read(self, path: str, **options: Any) -> Any:
+        """Read an OniMcp virtual file after verifying pause.
+
+        Examples: ``/active/colony/status.oni``, ``/active/dupes/index.oni``
+        and ``/active/resources/food.oni``. Returns decoded JSON/TOON or a
+        ``{"text": ...}`` Markdown result. No local filesystem access.
+        """
+        if not isinstance(path, str) or not path.startswith("/active/"):
+            raise ValueError("Use an absolute /active/ virtual file path")
+        if {"command", "path", "task"} & options.keys():
+            raise ValueError("Read options cannot override command, path or task")
+        self.pause()
+        return self.client.call_tool(
+            "world_editor", {**options, "command": "read", "path": path}
+        )
+
+    def frame(self, *, timeout: float = 10) -> GameFrame:
+        """Capture a fresh real game viewport, keeping the simulation paused.
+
+        ONI writes screenshots asynchronously. Wait for a complete PNG with a
+        unique name instead of returning yesterday's frame or a partial file.
+        The Python kernel and OniMcp must share the local temporary directory.
+        A Null graphics device cannot render frames; failure is explicit.
+        """
+        McpClient._timeout(timeout)
+        self.pause()
+        filename = f"notebook_{uuid4().hex}.png"
+        result = self.client.call_tool(
+            "navigation_control",
+            {"action": "screenshot", "filename": filename},
+            timeout=timeout,
+        )
+        expected = Path(tempfile.gettempdir()) / "oni-mcp" / "screenshots" / filename
+        if not isinstance(result, dict) or result.get("path") != str(expected):
+            raise McpError("Screenshot did not return the expected local PNG path")
+        deadline = time.monotonic() + timeout
+        error: Exception | None = None
+        while True:
+            try:
+                if expected.is_symlink():
+                    raise McpError("Screenshot path must not be a symbolic link")
+                with expected.open("rb") as stream:
+                    data = stream.read(MAX_FRAME_BYTES + 1)
+                frame = GameFrame(
+                    data, datetime.now(timezone.utc).isoformat(), result.get("cycle")
+                )
+                self.pause()
+                return frame
+            except (OSError, ValueError) as failure:
+                error = failure
+            if time.monotonic() >= deadline:
+                raise McpError(
+                    "No complete game frame received. Use graphics-enabled ONI "
+                    "and run the notebook kernel on the same machine as OniMcp."
+                ) from error
+            time.sleep(min(0.05, max(0, deadline - time.monotonic())))
+
+    def watch(self, *, frames: int = 10, interval: float = 0.5) -> GameFrame:
+        """Refresh one Jupyter display a bounded number of times; never resume.
+
+        The cell runs synchronously and can be interrupted. Its saved output is
+        the last captured PNG; reopening the notebook does not start a stream.
+        Install ``oniharness[notebook]`` for IPython display support.
+        """
+        if type(frames) is not int or not 1 <= frames <= 120:
+            raise ValueError("frames must be an integer from 1 to 120")
+        if not math.isfinite(interval) or not 0.05 <= interval <= 60:
+            raise ValueError("interval must be from 0.05 to 60 seconds")
+        try:
+            display = import_module("IPython.display").display
+        except ImportError as error:
+            raise ImportError("Install oniharness[notebook] to use watch()") from error
+        handle = None
+        try:
+            for index in range(frames):
+                if index:
+                    time.sleep(interval)
+                frame = self.frame()
+                if handle is None:
+                    handle = display(frame, display_id=True)
+                else:
+                    handle.update(frame)
+            return frame
+        finally:
+            self.pause()
 
     def observe(
         self,

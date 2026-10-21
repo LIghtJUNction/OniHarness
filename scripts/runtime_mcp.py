@@ -1,21 +1,48 @@
 """Small, loopback-only OniMcp client for real-game tests and shared observations."""
 import json
 from pathlib import Path
+import re
 import urllib.parse
 import urllib.request
 import uuid
 
 PROTOCOL = "2025-11-25"
 
+TOON_HEADER = re.compile(r'^(?:(?:"(?:[^"\\]|\\.)*"|[^\W\d][\w.-]*)(?:\[\d+[,\t]?\])?(?:\{[^{}\n]*\})?|\[\d+[,\t]?\](?:\{[^{}\n]*\})?):(?:[ \t]|$)')
+
+
+def decode_text(text):
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    if not text.strip():
+        return {"text": text}
+    structured = TOON_HEADER.match(text.lstrip()) is not None
+    if not structured:
+        return {"text": text}
+    try:
+        from toon_format import decode
+    except ImportError as error:
+        if structured:
+            raise RuntimeError("Tool returned TOON; install scripts/requirements-runtime.txt in the runtime Python environment") from error
+        return {"text": text}
+    try:
+        value = decode(text)
+    except ValueError as error:
+        if structured:
+            raise RuntimeError("Malformed TOON tool output") from error
+        return {"text": text}
+    return value if isinstance(value, (dict, list)) else {"text": text}
+
 
 def payload(result):
     text = "\n".join(c["text"] for c in result.get("content", []) if c.get("type") == "text")
     if result.get("isError"):
         raise RuntimeError(text or "MCP tool failed")
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        return {"text": text}
+    if isinstance(result.get("structuredContent"), dict):
+        return result["structuredContent"]
+    return decode_text(text)
 
 
 class Client:
@@ -81,10 +108,7 @@ class Client:
         if child.get("isError") or child.get("success") is False:
             raise RuntimeError("Observation failed: " + str(child))
         text = child.get("text", "")
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            return {"text": text}
+        return decode_text(text)
 
 
 def atomic_json(path, value):

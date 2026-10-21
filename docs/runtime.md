@@ -7,11 +7,38 @@ The original game-free/native tests remain available and never launch the game.
 It is not included in the original v0.1.0 packages. Linux runtime support is
 experimental; a successful startup does not certify every game/mod feature.
 
+For an explicitly managed group of complete game instances, see the experimental
+[resident multi-instance controller](multi-instance.md). It has independent test
+profiles, save copies, controls, loaded DLL hash receipts and resource limits.
+Its native simultaneous-game gate is separate from protocol-client tests. The
+single-game `runtime.py launch` protection below remains unchanged.
+
 [Verified headless run](verification/headless.json) records a loaded three-duplicant
 test save, positive native-clock progress and duplicant movement, zero camera
 render callbacks, no OS game window or DRM descriptor, and client-loss stop/recovery.
 It is one build/save/mod combination, not complete feature coverage or a measured
 whole-game speedup.
+
+Runtime clients accept JSON, MCP `structuredContent`, and OniMcp's current TOON
+tool text. For TOON servers, create a Python environment and install the pinned
+official decoder before using these scripts:
+
+```sh
+python3 -m venv .venv-runtime
+.venv-runtime/bin/python -m pip install --require-hashes -r scripts/requirements-runtime.txt
+.venv-runtime/bin/python scripts/runtime.py --help
+```
+
+Use that interpreter for subsequent runtime commands and `tests/test_runtime.py`.
+JSON-only servers do not require this dependency. Ordinary Markdown remains
+verbatim; malformed structured TOON fails rather than becoming an observation.
+
+An interrupted startup can leave `mods.json` with `mod_load_in_progress=true`.
+The pinned game then enters mod safe mode and skips loading DLLs even when their
+per-DLC entries remain enabled. Installation now refuses that state before any
+build or write. A test controller that stopped its own startup must restore the
+recorded pre-test loader flag after the process is gone, alongside its mod
+enablement fields. An unknown previous flag is not permission to clear it.
 
 [First performance iteration](verification/performance-loop.json) records the
 control-notification/client-loss checks and a CycleTrim single-install regression
@@ -48,6 +75,7 @@ menu video creation, the menu intro and the liquid renderer's multi-target
 command buffer (unsupported by the Null device). These entrypoints require validation
 after a game update. UI video-player children are deactivated before native
 cloning as well, since in-game scheduled UI also creates a video panel.
+Save thumbnails and daily timelapse capture requests are also skipped in explicit headless mode: their RenderTexture/camera operations require a graphics device. Save serialization and load logic remain active. Status exposes `skippedTimelapseCaptures` so a save test can verify the presentation boundary.
 Game simulation, AI, chores and physics are not patched.
 
 The companion records native error dialogs in private `failure.json`, including

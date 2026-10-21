@@ -9,6 +9,7 @@ namespace OniHarness.Runtime
     {
         internal static int SkippedInitializers;
         internal static int DisabledVideoPlayers;
+        internal static int SkippedTimelapseCaptures;
 
         internal static void Install(Harmony harmony)
         {
@@ -27,6 +28,11 @@ namespace OniHarness.Runtime
                 harmony.Patch(target, prefix: new HarmonyMethod(typeof(HeadlessVisuals), nameof(SkipVisualInit)));
             harmony.Patch(uiFactory,
                 prefix: new HarmonyMethod(typeof(HeadlessVisuals), nameof(PrepareVideoUi)));
+            // SaveColonyPreview is presentation after serialization completes.
+            // A Null device cannot render a thumbnail or a daily timelapse.
+            foreach (string name in new[] { "SaveColonyPreview", "InitialScreenshot", "OnNewDay", "SaveScreenshot" })
+                harmony.Patch(AccessTools.Method(typeof(Timelapser), name),
+                    prefix: new HarmonyMethod(typeof(HeadlessVisuals), nameof(SkipTimelapseCapture)));
         }
 
         private static void PrepareVideoUi(GameObject original)
@@ -51,6 +57,13 @@ namespace OniHarness.Runtime
             SkippedInitializers++;
             Debug.Log("[OniHarness] Skipped headless visual initialization: " +
                 __originalMethod.DeclaringType.Name + "." + __originalMethod.Name);
+            return false;
+        }
+
+        private static bool SkipTimelapseCapture(MethodBase __originalMethod)
+        {
+            SkippedTimelapseCaptures++;
+            Debug.Log("[OniHarness] Skipped headless timelapse capture: " + __originalMethod.Name);
             return false;
         }
     }

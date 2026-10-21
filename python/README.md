@@ -2,7 +2,7 @@
 
 Run **Oxygen Not Included mod tests** from Python and read paused game
 observations through a local OniMcp server. Developed with **Python 3.15 and uv**;
-the Python API supports Python 3.10+. This is an early 0.2.0 preview.
+the Python API supports Python 3.10+. This is an early 0.3.0 preview.
 
 ```sh
 uv pip install oniharness
@@ -93,6 +93,56 @@ so it cannot escape the pause scope. This is not a bounded stepping API.
 `game.client.call_tool(name, arguments)` exposes the installed tool catalog directly.
 This low-level API can write to the game and does **not** add pause protection;
 use the usual pause → observe → plan → act → short run → pause → verify loop.
+
+## Analyze a colony in Jupyter
+
+Install the optional notebook tools with uv and Python 3.15:
+
+```sh
+uv pip install 'oniharness[notebook]'
+```
+
+In a notebook connected to graphics-enabled ONI and OniMcp on the same machine:
+
+```python
+from oniharness import Game
+
+game = Game()
+game.frame()                    # displays the actual game viewport
+```
+
+```python
+last_frame = game.watch(frames=3, interval=0.5)  # refreshes one output; keeps ONI paused
+```
+
+`GameFrame` embeds PNG bytes in saved notebook output. `frame.save("colony.png")`
+saves the original capture. Each request uses a unique filename and waits for a
+complete PNG; missing/incomplete frames raise `McpError`. Null-device headless
+ONI cannot provide game graphics. This is a bounded sequence of screenshots,
+not a video encoder or an automatic game-resume loop.
+
+Use decoded game data directly with pandas:
+
+```python
+import pandas as pd
+
+@game.paused
+def food_stock():
+    data = game.read("/active/resources/food.oni")
+    return pd.DataFrame(data["foods"])[["prefabId", "totalCaloriesKcal"]]
+
+food_stock()
+```
+
+The English [notebook tutorial](https://github.com/LIghtJUNction/OniHarness/blob/main/examples/python/analyze_oni.ipynb)
+checks tool availability, plots food and stress, samples local cell environments,
+refreshes the real game view, and exports reviewed tables with provenance.
+From a source checkout, run `uv sync --python 3.15 --extra notebook --locked`, then
+register its kernel with `uv run --python 3.15 --extra notebook python -m ipykernel install --user --name oniharness-315 --display-name "OniHarness (Python 3.15)"`.
+Start Jupyter with
+`uv run --python 3.15 --extra notebook jupyter lab examples/python/analyze_oni.ipynb`.
+Select the project's Python 3.15 kernel. Notebook displays need a running game;
+they do not need the separate native test CLI.
 
 More examples and development instructions:
 [Python guide](https://github.com/LIghtJUNction/OniHarness/blob/main/docs/python.md).

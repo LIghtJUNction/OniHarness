@@ -13,12 +13,73 @@ from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from runtime import observe, main, read_status, validate_headless, wait_ready
-from runtime_mcp import Client
-from install_runtime import enable_entry
+from runtime_mcp import Client, decode_text, payload
+from install_runtime import enable_entry, require_idle_mod_loader, restore_mod_loader_state
 from measure_steps import require_log_markers
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_interrupted_mod_loader_is_rejected_and_owned_baseline_restores_only_its_flag(self):
+        before = {"mod_load_in_progress": False}
+        current = {"mod_load_in_progress": True, "mods": [{"newMetadata": 7}], "version": 1}
+        with self.assertRaisesRegex(RuntimeError, "mod loading was interrupted"):
+            require_idle_mod_loader(current)
+        restore_mod_loader_state(current, before)
+        require_idle_mod_loader(current)
+        self.assertEqual(current, {"mod_load_in_progress": False, "mods": [{"newMetadata": 7}], "version": 1})
+        restore_mod_loader_state(current, {"mod_load_in_progress": True})
+        self.assertTrue(current["mod_load_in_progress"])
+        restore_mod_loader_state(current, {})
+        self.assertTrue(current["mod_load_in_progress"])
+
+    def test_runtime_install_rejects_interrupted_loader_before_build_or_writes(self):
+        from install_runtime import main as install
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manifest = root / "mods.json"
+            original = json.dumps({"mods": [], "mod_load_in_progress": True})
+            manifest.write_text(original)
+            with patch("install_runtime.game_pids", return_value=[]), \
+                    patch("install_runtime.subprocess.run") as build, \
+                    patch.object(sys, "argv", ["install_runtime.py", "--game-path", "/fake/game", "--mods-dir", temp]):
+                with self.assertRaisesRegex(RuntimeError, "mod loading was interrupted"):
+                    install()
+                build.assert_not_called()
+            self.assertEqual(manifest.read_text(), original)
+            self.assertFalse((root / "Local").exists())
+
+    def test_structured_content_takes_precedence_and_errors_remain_errors(self):
+        result = {"structuredContent": {"isPaused": True}, "content": [{"type": "text", "text": "isPaused: false"}]}
+        self.assertEqual(payload(result), {"isPaused": True})
+        with self.assertRaisesRegex(RuntimeError, "isPaused: false"):
+            payload({**result, "isError": True})
+
+    def test_toon_status_and_tabular_choices_decode_without_changing_json(self):
+        text = "stage: mode\nisPaused: null\nchoices[2]{id,enabled}:\n  survival,true\n  sandbox,false"
+        self.assertEqual(decode_text(text), {"stage": "mode", "isPaused": None,
+            "choices": [{"id": "survival", "enabled": True}, {"id": "sandbox", "enabled": False}]})
+        self.assertEqual(decode_text('{"isPaused":true,"simulationSeconds":2.5}'),
+                         {"isPaused": True, "simulationSeconds": 2.5})
+
+    def test_toon_batch_child_uses_the_same_decoder(self):
+        client = object.__new__(Client)
+        client.call = lambda *args: {"executed": 1, "failed": 0,
+                                   "results": [{"text": "isPaused: true\nsimulationSeconds: 2.5"}]}
+        self.assertEqual(client.read("game_control", {}), {"isPaused": True, "simulationSeconds": 2.5})
+
+    def test_plain_markdown_is_preserved_and_malformed_toon_is_rejected(self):
+        text = "# Native colony\n\n- 氧气: 1 kg\n"
+        self.assertEqual(decode_text(text), {"text": text})
+        with self.assertRaisesRegex(RuntimeError, "Malformed TOON"):
+            decode_text("choices[2]: survival")
+
+    def test_missing_toon_dependency_is_explicit_without_breaking_json_or_markdown(self):
+        with patch.dict(sys.modules, {"toon_format": None}):
+            self.assertEqual(decode_text('{"loaded":true}'), {"loaded": True})
+            self.assertEqual(decode_text("# Map"), {"text": "# Map"})
+            with self.assertRaisesRegex(RuntimeError, "requirements-runtime.txt"):
+                decode_text("stage: main_menu")
+
     def test_measurement_rejects_an_unloaded_mod_before_starting_steps(self):
         with tempfile.TemporaryDirectory() as temp:
             output = Path(temp)

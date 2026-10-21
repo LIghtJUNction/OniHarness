@@ -49,7 +49,7 @@ public sealed class NativeWorld : IDisposable
             var initialize = Export<Initialize>("SIM_Initialize");
             shutdown = Export<Shutdown>("SIM_Shutdown");
             message = Export<Message>("SIM_HandleMessage");
-            callback = (id, _) => { if (id == 0) Interlocked.Exchange(ref callbackError, 1); return 0; };
+            callback = (id, _) => { if (id is 0 or 1) Interlocked.Exchange(ref callbackError, 1); return 0; };
             initialize(callback);
             initialized = true;
             Send(1108437482, EncodeElements(scenario.Elements));

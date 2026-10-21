@@ -15,6 +15,20 @@ ROOT = Path(__file__).resolve().parents[1]
 STATIC_ID = "LIghtJUNction.OniHarness.Runtime"
 
 
+def require_idle_mod_loader(document):
+    state = document.get("mod_load_in_progress")
+    if state is True:
+        raise RuntimeError("Previous mod loading was interrupted; resolve its recorded loader state before installing or enabling test mods")
+    if state not in (False, None):
+        raise ValueError("Mod loader progress flag is malformed")
+
+
+def restore_mod_loader_state(document, before):
+    """Restore only a known owned baseline, after the owning game has stopped."""
+    if "mod_load_in_progress" in before:
+        document["mod_load_in_progress"] = before["mod_load_in_progress"]
+
+
 def enable_entry(entry, dlc):
     dlcs = entry.get("enabledForDlc") or []
     if not isinstance(dlcs, list):
@@ -44,6 +58,7 @@ def main():
         raise RuntimeError("Exit ONI before installing; no running game will be stopped automatically")
     manifest = args.mods_dir / "mods.json"
     document = json.loads(manifest.read_text(encoding="utf-8"))
+    require_idle_mod_loader(document)
     entries = document["mods"]
     matching = [m for m in entries if m.get("staticID") == STATIC_ID]
     if len(matching) > 1:
