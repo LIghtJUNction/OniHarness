@@ -41,6 +41,7 @@ def receive_exact(client, count):
 
 
 class ResourceTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == 'linux', 'Process sampling requires Linux /proc and os.sysconf')
     def test_self_sample_is_identified_and_json_safe(self):
         identity = ProcessIdentity.capture(os.getpid())
         result = sample_process(identity)
@@ -55,6 +56,7 @@ class ResourceTests(unittest.TestCase):
         self.assertEqual(stale['error'], 'pid_reused')
         self.assertNotIn('rssKiB', stale)
 
+    @unittest.skipUnless(sys.platform == 'linux', 'Group sampling requires Linux /proc and os.sysconf')
     def test_group_limits_rates_and_duplicate_identity(self):
         identity = ProcessIdentity.capture(os.getpid())
         first = sample_group({'host': identity}, ResourceLimits(min_available_kib=0))
@@ -214,7 +216,12 @@ class NetworkTests(unittest.TestCase):
             started = time.monotonic()
             self.proxy.close()
             self.assertLess(time.monotonic() - started, 1)
-            self.assertEqual(client.recv(1), b'')
+            try:
+                self.assertEqual(client.recv(1), b'')
+            except ConnectionResetError:
+                # Winsock can report the intentionally closed connection as a reset.
+                if sys.platform != 'win32':
+                    raise
         with socket.socket() as rebound:
             rebound.bind(address)
 

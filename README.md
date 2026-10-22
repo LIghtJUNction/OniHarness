@@ -45,6 +45,7 @@ process tree; crashes, unsupported adapters and empty test runs are failures.
 
 Requirements: .NET SDK 10. A local Linux ONI installation is needed only for tests
 that use game files. Public CI and the framework's own behavioral tests need no game.
+For the full verification suite, also prepare Python as described in [Verification](#verification).
 
 ```sh
 git clone https://github.com/LIghtJUNction/OniHarness.git
@@ -210,11 +211,51 @@ Exit codes: **0** all selected tests passed; **1** a test failed, timed out,
 crashed or was unsupported; **2** command/configuration/discovery error. A report
 is produced for completed test runs; setup errors are written to stderr.
 
-Run `python3 scripts/verify.py` for game-free verification and package checks.
-Pass `--game-path PATH` to additionally run real native scenarios three times
-and all C# examples. CI runs only the game-free portion. Use your own runner
-with your local installation for game-dependent tests; game files are never
-downloaded or uploaded by the workflow.
+## Verification
+
+The full game-free verification requires .NET SDK 10 and Python 3.10+ with
+`venv` and `pip` (CI uses Python 3.14). It includes real TOON decoding assertions,
+so `scripts/requirements-runtime.txt` is required even without `--game-path`.
+Create an isolated environment from the repository root and use its interpreter
+for both installation and verification. No environment activation is needed.
+
+Linux/macOS:
+
+```sh
+python3 -m venv .venv-runtime
+./.venv-runtime/bin/python -m pip install --require-hashes -r scripts/requirements-runtime.txt
+./.venv-runtime/bin/python scripts/verify.py
+```
+
+Windows PowerShell:
+
+```powershell
+py -3 -m venv .venv-runtime
+./.venv-runtime/Scripts/python.exe -m pip install --require-hashes -r scripts/requirements-runtime.txt
+./.venv-runtime/Scripts/python.exe scripts/verify.py
+```
+
+The requirements file fixes the decoder version and wheel hash. Verification
+uses the selected Python for every Python child check, fails with setup guidance
+if the decoder is missing, and never installs packages automatically. CI creates
+the same isolated environment and runs the same hash-checked installation and
+game-free verification on Linux and Windows.
+
+Both platforms run all TOON, portable argument/network, and managed-host checks.
+The experimental [Linux instance controller](docs/multi-instance.md), `/proc`
+sampling, POSIX installation views, and offline file-ownership checks report
+explicit platform skips on Windows; Linux runs all of their assertions. These
+skips do not apply to missing Python dependencies or failed TOON decoding.
+
+On a supported local game installation, use the same environment to additionally
+run real native scenarios three times, all C# examples, and the physics playground:
+
+```sh
+./.venv-runtime/bin/python scripts/verify.py --game-path /path/to/OxygenNotIncluded
+```
+
+Use your own runner with your local installation for game-dependent tests; game
+files are never downloaded or uploaded by the workflow.
 
 Test assemblies are trusted code, not a security sandbox. Process isolation
 contains crashes and timeouts; it does not restrict a test's file/network access.

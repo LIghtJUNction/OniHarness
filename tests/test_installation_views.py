@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from instance_installation import MARKER, prepare_installation_view
 
 
+@unittest.skipUnless(sys.platform == "linux", "Linux installation views require POSIX modes and symlink targets")
 class InstallationViewTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()

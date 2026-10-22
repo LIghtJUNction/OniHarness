@@ -10,6 +10,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            venv_python: ./.venv-runtime/bin/python
+          - os: windows-latest
+            venv_python: ./.venv-runtime/Scripts/python.exe
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -18,8 +23,15 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - name: Create isolated verification environment
+        run: python -m venv .venv-runtime
+      - name: Install hash-pinned verification dependencies
+        run: ${{ matrix.venv_python }} -m pip install --require-hashes -r scripts/requirements-runtime.txt
       - name: Build, test, package and check distribution boundaries
-        run: python scripts/verify.py
+        run: ${{ matrix.venv_python }} scripts/verify.py
       - uses: actions/upload-artifact@v7
         with:
           name: packages-${{ matrix.os }}
