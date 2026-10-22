@@ -42,6 +42,12 @@ and entitlement checks. It does not forge different Steam accounts. Same-account
 processes are suitable for LAN roles only if the mod gives them separate connection
 identities; they do not prove separate-account Steam P2P behavior.
 
+The same exact Python entrypoint and final `%command%` may have `prime-run`,
+`gamemoderun`, or both (in either order) in front. These known exec-style wrappers
+remain in the Steam launch chain and are not removed or rewritten. Unknown
+prefixes, wrapper arguments, extra trailing commands and malformed quoting are
+rejected before launch; this is not a general shell-command parser.
+
 There is no verified public shell API for changing this option in a running Steam
 client. The controller reads only the active login's exact target app setting and
 never modifies Steam's active `localconfig.vdf`, kills Steam, enables an internal

@@ -154,6 +154,18 @@ def steam_launch_options():
     return [entry.value.value] if entry else []
 
 
+def selects_steam_wrapper(option, wrapper):
+    """Accept known exec-style desktop wrappers without rewriting Steam options."""
+    try:
+        words = shlex.split(option)
+    except ValueError:
+        return False
+    if words[-3:] != ["python3", wrapper, "%command%"]:
+        return False
+    return tuple(words[:-3]) in ((), ("prime-run",), ("gamemoderun",),
+                                ("prime-run", "gamemoderun"), ("gamemoderun", "prime-run"))
+
+
 def validate_config(document):
     if document.get("schema") != SCHEMA:
         raise ValueError("Unsupported controller schema")
@@ -672,7 +684,7 @@ class Controller:
         wrapper = str(Path(__file__).with_name("steam_instance_entry.py").resolve())
         options = steam_launch_options()
         expected = f'python3 {shlex.quote(wrapper)} %command%'
-        if not any(option.strip() == expected for option in options):
+        if not any(selects_steam_wrapper(option, wrapper) for option in options):
             raise RuntimeError("Steam Launch Options must select the official wrapper before isolated tests: " + expected +
                                "; existing options were left untouched")
         stale = self.root / "launcher-status.json"
