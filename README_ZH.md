@@ -88,6 +88,11 @@ py -3 -m venv .venv-runtime
 缺依赖时会明确失败并提示安装步骤，不会自动安装到系统 Python。Linux/Windows CI
 也使用同样的隔离环境、哈希校验安装和无游戏验证流程。
 
+两种平台都运行全部 TOON、可移植参数与网络、独立 C# 宿主检查。
+[实验性 Linux 实例控制器](docs/multi-instance.md)、`/proc` 采样、POSIX 安装视图
+和离线文件所有权检查在 Windows 上明确报告平台不适用；这些断言在 Linux 全部执行。
+缺少 Python 依赖或 TOON 解码失败仍会让验证失败。
+
 已安装受支持游戏版本的本地环境，可用同一个解释器追加真实游戏库测试、C# 示例
 和物理回放实验：
 

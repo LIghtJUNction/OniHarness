@@ -16,6 +16,9 @@ import time
 import unittest
 from unittest.mock import patch
 
+if sys.platform != "linux":
+    raise unittest.SkipTest("The Linux instance controller requires fcntl, /proc, Unix sockets and CPU affinity")
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import instance_controller as control

@@ -241,6 +241,12 @@ if the decoder is missing, and never installs packages automatically. CI creates
 the same isolated environment and runs the same hash-checked installation and
 game-free verification on Linux and Windows.
 
+Both platforms run all TOON, portable argument/network, and managed-host checks.
+The experimental [Linux instance controller](docs/multi-instance.md), `/proc`
+sampling, POSIX installation views, and offline file-ownership checks report
+explicit platform skips on Windows; Linux runs all of their assertions. These
+skips do not apply to missing Python dependencies or failed TOON decoding.
+
 On a supported local game installation, use the same environment to additionally
 run real native scenarios three times, all C# examples, and the physics playground:
 
