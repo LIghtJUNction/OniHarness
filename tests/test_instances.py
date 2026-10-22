@@ -431,6 +431,7 @@ class ControllerTests(unittest.TestCase):
         status = {"pid": 123, "runNonce": "new-native"}
         stale = {"pid": 555, "children": {"guest1": {"pid": 888, "exitCode": 0}}}
         with patch.object(self.controller, "live", return_value=False), \
+             patch.object(control.shutil, "which", return_value="/fixture/steam"), \
              patch.object(self.controller, "chain_identity", return_value=None), \
              patch.object(control, "game_processes", return_value={}), \
              patch.object(self.controller, "preflight"), \

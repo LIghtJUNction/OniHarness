@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build, run behavioral tests and inspect packages; optionally test installed ONI libraries."""
 import argparse
+import importlib
 from pathlib import Path
 import subprocess
 import sys
@@ -13,12 +14,27 @@ def run(*args):
     subprocess.run(list(map(str, args)), cwd=ROOT, check=True)
 
 
+def require_runtime_dependencies():
+    try:
+        importlib.import_module("toon_format")
+    except ImportError as error:
+        raise SystemExit(
+            "Verification requires the TOON decoder, including game-free checks.\n"
+            f"Current Python: {sys.executable}\n"
+            "Follow README.md#verification to create an isolated virtual environment, then run:\n"
+            "  <venv-python> -m pip install --require-hashes -r scripts/requirements-runtime.txt\n"
+            "  <venv-python> scripts/verify.py"
+        ) from error
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--game-path")
     args = parser.parse_args()
+    require_runtime_dependencies()
     run("dotnet", "build", "OniHarness.slnx", "-c", "Release", "--nologo")
     run("dotnet", "run", "--project", "tests/OniHarness.Tests", "-c", "Release", "--no-build")
+    run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_verify.py")
     run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_runtime.py")
     run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_instance*.py")
     run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_installation_views.py")

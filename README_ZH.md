@@ -61,12 +61,40 @@ Core 包。具体安装、JSON 场景格式与 C# 用例写法见 [README](READM
 测试结果明确标出证据类型：真实原生模拟、独立 C# 宿主、静态元数据。
 这些结果不等于完整游戏内验收，也不能用来声称游戏 FPS 提升。
 
+## 验证
+
+完整框架验证需要 .NET SDK 10、Python 3.10+ 及其 `venv`、`pip`（CI 使用
+Python 3.14）。不带 `--game-path` 时也会检查真实 TOON 解码，因此必须安装
+`scripts/requirements-runtime.txt`。在仓库根目录创建隔离环境，用同一个环境的
+Python 安装依赖和执行验证；无需激活环境。
+
+Linux/macOS：
+
 ```sh
-python3 scripts/verify.py
-python3 scripts/verify.py --game-path /path/to/OxygenNotIncluded
+python3 -m venv .venv-runtime
+./.venv-runtime/bin/python -m pip install --require-hashes -r scripts/requirements-runtime.txt
+./.venv-runtime/bin/python scripts/verify.py
 ```
 
-第一条运行公开 CI 同样的框架验证；第二条额外运行真实游戏库测试。
+Windows PowerShell：
+
+```powershell
+py -3 -m venv .venv-runtime
+./.venv-runtime/Scripts/python.exe -m pip install --require-hashes -r scripts/requirements-runtime.txt
+./.venv-runtime/Scripts/python.exe scripts/verify.py
+```
+
+依赖文件固定解码器版本和 wheel 哈希。验证中的所有 Python 子检查沿用所选解释器；
+缺依赖时会明确失败并提示安装步骤，不会自动安装到系统 Python。Linux/Windows CI
+也使用同样的隔离环境、哈希校验安装和无游戏验证流程。
+
+已安装受支持游戏版本的本地环境，可用同一个解释器追加真实游戏库测试、C# 示例
+和物理回放实验：
+
+```sh
+./.venv-runtime/bin/python scripts/verify.py --game-path /path/to/OxygenNotIncluded
+```
+
 用自己的 runner 提供本地游戏安装，公共 CI 不需要、也不会下载游戏文件。
 
 ## 配套技能与连续实验
