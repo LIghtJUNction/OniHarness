@@ -20,6 +20,7 @@ def main():
     run("dotnet", "build", "OniHarness.slnx", "-c", "Release", "--nologo")
     run("dotnet", "run", "--project", "tests/OniHarness.Tests", "-c", "Release", "--no-build")
     run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_runtime.py")
+    run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_runtime_options.py")
     run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_instance*.py")
     run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_installation_views.py")
     run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_steam_launch_options.py")

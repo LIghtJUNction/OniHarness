@@ -43,21 +43,35 @@ namespace UnityEngine {
     public static class Application { public static string persistentDataPath = "/fake-unity-root"; public static bool isBatchMode = true; }
     public static class SystemInfo { public static string graphicsDeviceType = "Null"; }
     public class Camera { public static event Action<Camera> onPostRender; public static void Render() => onPostRender?.Invoke(new Camera()); }
-    public static class Time { public static float realtimeSinceStartup; }
+    public static class Time { public static float realtimeSinceStartup; public static float timeScale = 1; }
     public static class Debug { public static void LogWarning(string value) { Console.Error.WriteLine(value); } }
 }
 public static class Util { public static string Root; public static string RootFolder() => Root; }
 public class Game { public static Game Instance; public bool Loading; public bool IsLoading()=>Loading; public bool IsInitialized()=>true; }
 public class GameClock { public static GameClock Instance; public double Value; public double GetTime()=>Value; }
 public class SpeedControlScreen {
-    public static SpeedControlScreen Instance; public bool IsPaused=true; public int Unpauses;
-    public void Pause(bool playSound) { IsPaused=true; }
-    public void Unpause(bool playSound) { IsPaused=false; Unpauses++; }
+    private int pauseCount=1;
+    public static SpeedControlScreen Instance; public bool IsPaused { get=>pauseCount>0; set=>pauseCount=value?1:0; } public int Unpauses;
+    public void Pause(bool playSound) { pauseCount++; }
+    public void Unpause(bool playSound) { pauseCount=Math.Max(0,pauseCount-1); Unpauses++; }
 }
 public static class KCrashReporter { public static bool hasCrash; }
 public static class SaveLoader { public static string Active; public static string GetActiveSaveFilePath()=>Active; }
 public class ScreenPrefabs { public static ScreenPrefabs Instance=new ScreenPrefabs(); public object loadingOverlay = new object(); }
 public class GameScreenManager { public static GameScreenManager Instance = new GameScreenManager(); }
+public class Label { public string text {get;set;} }
+public class ConfirmDialogScreen {
+    public bool isActiveAndEnabled {get;set;} = true;
+    private Label titleText = new Label {text="MOD DIFFERENCES"};
+    private Label popupMessage = new Label {text="Save game mods differ from currently active mods: fixture"};
+    public static int Confirmations;
+    public void OnSelect_OK() {Confirmations++; isActiveAndEnabled=false; SpeedControlScreen.Instance.Unpause(false);}
+}
+public class KScreenManager {
+    public static KScreenManager Instance = new KScreenManager();
+    private object[] screenStack = {new ConfirmDialogScreen(), new ConfirmDialogScreen {isActiveAndEnabled=false}};
+    public string DebugScreenStack()=>"fixture-native-screen-stack";
+}
 public static class LoadingOverlay { public static Action Pending; public static void Load(Action callback) { Pending=callback; } }
 public static class LoadScreen { public static int Loads; public static void DoLoad(string path) { Loads++; SaveLoader.Active=path; Game.Instance=new Game(); } }
 public static class App { public static bool QuitCalled; public static void Quit() { QuitCalled=true; } }
@@ -75,8 +89,8 @@ public static class ContractMain {
     }
     private static JsonElement Read(string file) => JsonDocument.Parse(File.ReadAllText(Path.Combine(root,file))).RootElement.Clone();
     private static void Poll() { UnityEngine.Time.realtimeSinceStartup+=1; Invoke("Update"); }
-    private static JsonElement Send(string id, string action, double seconds=0, string path=null, string hash=null) {
-        File.WriteAllText(Path.Combine(root,"instance-command.json"), JsonSerializer.Serialize(new {id, instance="guest-1", nonce, action, seconds, path, sha256=hash},json));
+    private static JsonElement Send(string id, string action, double seconds=0, string path=null, string hash=null, string expectedTitle=null, string expectedMessage=null) {
+        File.WriteAllText(Path.Combine(root,"instance-command.json"), JsonSerializer.Serialize(new {id, instance="guest-1", nonce, action, seconds, path, sha256=hash, expectedTitle, expectedMessage},json));
         Poll();
         return Read("instance-response.json");
     }
@@ -199,6 +213,27 @@ public static class ContractMain {
             Send("step-zero-progress","step",seconds:.001); System.Threading.Thread.Sleep(8); Poll();
             Failed(Read("instance-response.json"),"zero native progress fails");
             Check(SpeedControlScreen.Instance.IsPaused,"zero-progress step still pauses");
+            SpeedControlScreen.Instance.IsPaused=true; SpeedControlScreen.Instance.Pause(false);
+            unpauses=SpeedControlScreen.Instance.Unpauses;
+            Send("step-nested-pause","step",seconds:.001); System.Threading.Thread.Sleep(8); Poll();
+            var nested=Read("instance-response.json");
+            Failed(nested,"remaining native pause keeps zero-progress failure");
+            Check(nested.GetProperty("pauseCountBeforeRelease").GetInt32()==2 && nested.GetProperty("pauseCountAfterRelease").GetInt32()==1,"diagnostics retain exact native pause counts");
+            Check(nested.GetProperty("screenStackBeforeRelease").GetString()=="fixture-native-screen-stack","step preserves the pre-release native screen stack");
+            Check(SpeedControlScreen.Instance.Unpauses==unpauses+1 && SpeedControlScreen.Instance.IsPaused,"diagnostics never release an unexplained second hold");
+            UnityEngine.Time.timeScale=.5f; Poll();
+            Check(Read("instance-status.json").GetProperty("timeScale").GetDouble()==.5,"status observes time scale without changing it");
+            var dialogs=Read("instance-status.json").GetProperty("confirmDialogs");
+            Check(dialogs.GetArrayLength()==1,"dialog diagnostics exclude inactive screens");
+            Check(dialogs[0].GetProperty("title").GetString()=="MOD DIFFERENCES" && dialogs[0].GetProperty("message").GetString()=="Save game mods differ from currently active mods: fixture","dialog diagnostics retain visible title and message");
+            Failed(Send("ack-wrong-title","acknowledge-mod-differences",expectedTitle:"ERROR",expectedMessage:"unknown"),"error dialogs cannot be acknowledged");
+            Failed(Send("ack-stale-message","acknowledge-mod-differences",expectedTitle:"MOD DIFFERENCES",expectedMessage:"Save game mods differ from currently active mods: stale"),"changed dialog cannot be acknowledged");
+            Check(ConfirmDialogScreen.Confirmations==0,"failed acknowledgments invoke no native handler");
+            var ack=Send("ack-reviewed","acknowledge-mod-differences",expectedTitle:"MOD DIFFERENCES",expectedMessage:"Save game mods differ from currently active mods: fixture");
+            Check(ack.GetProperty("state").GetString()=="completed" && ConfirmDialogScreen.Confirmations==1 && SpeedControlScreen.Instance.IsPaused,"reviewed acknowledgment uses native handler and leaves game paused");
+            Send("ack-reviewed","acknowledge-mod-differences",expectedTitle:"MOD DIFFERENCES",expectedMessage:"Save game mods differ from currently active mods: fixture");
+            Check(ConfirmDialogScreen.Confirmations==1,"acknowledgment replay cannot invoke twice");
+            SpeedControlScreen.Instance.IsPaused=true;
             Send("step-changed-game","step",seconds:1); Game.Instance=new Game(); Poll();
             Failed(Read("instance-response.json"),"world change aborts active step");
             Check(SpeedControlScreen.Instance.IsPaused,"world change pauses current screen");

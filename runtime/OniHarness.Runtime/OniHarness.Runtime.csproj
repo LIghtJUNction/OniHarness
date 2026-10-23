@@ -7,15 +7,23 @@
     <Nullable>disable</Nullable>
     <LangVersion>latest</LangVersion>
     <ManagedPath>$(OniGamePath)/OxygenNotIncluded_Data/Managed</ManagedPath>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="PLib" Version="4.25.0" />
+    <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.48" PrivateAssets="all" />
     <Reference Include="Assembly-CSharp" HintPath="$(ManagedPath)/Assembly-CSharp.dll" Private="false" />
     <Reference Include="Assembly-CSharp-firstpass" HintPath="$(ManagedPath)/Assembly-CSharp-firstpass.dll" Private="false" />
     <Reference Include="0Harmony" HintPath="$(ManagedPath)/0Harmony.dll" Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedPath)/UnityEngine.CoreModule.dll" Private="false" />
     <Reference Include="UnityEngine.VideoModule" HintPath="$(ManagedPath)/UnityEngine.VideoModule.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="$(ManagedPath)/UnityEngine.dll" Private="false" />
     <Reference Include="Newtonsoft.Json" HintPath="$(ManagedPath)/Newtonsoft.Json.dll" Private="false" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="THIRD_PARTY_NOTICES.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../LICENSE;../../LICENSING.md" CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" />
   </ItemGroup>
   <Target Name="RequireInstalledGame" BeforeTargets="ResolveReferences">
     <Error Condition="!Exists('$(ManagedPath)/Assembly-CSharp.dll')" Text="Pass -p:OniGamePath=PATH to your installed ONI game." />

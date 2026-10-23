@@ -10,7 +10,10 @@ Its own upstream identity is recorded in [UPSTREAM.toml](UPSTREAM.toml).
 
 ONI, Unity and .NET are separate works. User-supplied mods retain their own terms.
 Python, the optional official TOON decoder, and Pillow visualization dependencies also retain their own
-terms; no dependency implementation is copied or bundled here.
+terms; their implementations are not copied into the game-free packages.
+The optional in-game Runtime companion embeds PLib 4.25.0 under its MIT license
+for the native Mod Options entry. Its copyright and full license are retained in
+`runtime/OniHarness.Runtime/THIRD_PARTY_NOTICES.txt` and copied into each Runtime installation.
 Interop declarations describe the installed library's interface; no game
 assembly, asset, decompiled implementation or save is part of this repository
 or its packages. Local game files are used in place and remain on the user's

@@ -213,6 +213,17 @@ from the loaded assemblies' actual file locations, not only desired build files.
 An unknown ONI process owned by another task blocks new launches/deployment.
 No automatic force kill exists.
 
+Instance telemetry includes read-only `nativePauseCount` and `timeScale` values.
+The native `acknowledge-mod-differences` command requires a loaded paused approved save and the exact previously observed `expectedTitle` and `expectedMessage`. It accepts only the English `MOD DIFFERENCES` warning, requires one active confirmation and invokes its normal `OnSelect_OK` handler once. Changed text, another confirmation type, ambiguous confirmations and errors fail closed. It then preserves a paused state; it never drains native pause counts. This is explicit acceptance of a changed test mod configuration, not evidence that the save is semantically comparable to its original configuration.
+
+Status also includes bounded title/message text for active native confirmation dialogs, read through optional reflection. This is local diagnostic data and may contain save-specific text; no dialog is dismissed or pause released by inspection.
+
+Pause count is nullable when the inspected native private field is unavailable.
+Completed/failed step responses retain the counts before and after their single
+native unpause. A remaining hold is diagnostic evidence, never permission to
+release another hold or dismiss a native modal. Zero native progress remains a
+failed step; these observations do not change simulation or pause ownership.
+
 The daemon can be stopped and restarted without automatically killing games.
 Its private state retains PID plus Linux process start ticks to reject PID reuse.
 Native Unity telemetry must also match the currently owned Steam chain and its

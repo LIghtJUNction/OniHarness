@@ -99,12 +99,14 @@ own compatibility tests. Memory savings are not guaranteed.
 
 Use your own installed game, an existing Steam login and enabled OniMcp.
 Exit ONI before installing. This installs only the companion's own DLL and
-metadata under `mods/Local`, backs up `mods.json`,
+metadata and license notices under `mods/Local`, backs up `mods.json`,
 and enables only the companion entry. New manifest backups go to
 `~/Backups/OniHarness/runtime/YYYY-MM-DD` (`--backup-dir` overrides it).
 Other mod entries are preserved. No
-game/Unity DLLs are copied. The companion changes nothing during ordinary
-launches without `--oniharness-control PATH`.
+game/Unity DLLs are copied. The companion exposes configuration in the game's
+**Mods → OniHarness Runtime → Options** without enabling control. Ordinary
+launches without `--oniharness-control PATH` never install test controllers or
+change rendering.
 
 ```bash
 python3 scripts/install_runtime.py --game-path /path/to/OxygenNotIncluded \
@@ -112,6 +114,19 @@ python3 scripts/install_runtime.py --game-path /path/to/OxygenNotIncluded \
 python3 scripts/runtime.py launch
 python3 scripts/runtime.py status
 ```
+
+The Options page controls whether explicitly launched test sessions are allowed,
+the default graphical reduced-rendering mode, its render interval (1–120), its
+update limit (15–240), status reconciliation (0.25–2 seconds), and optional exit
+stack traces. Changes apply after restart. A run's explicit `render.json` takes
+precedence over graphical defaults; Null-device headless sessions cannot become
+graphical through these options. File notifications still wake immediately and
+run deadlines are checked each frame. Active test sessions retain background
+updates so losing window focus cannot suspend their safety deadline.
+
+PLib is embedded only in the optional Runtime DLL; no separately installed PLib
+mod is required. Disabling explicit sessions writes a refusal to the selected
+control directory's status receipt and leaves controllers inactive.
 
 The installer defaults to `EXPANSION1_ID`; pass `--dlc ''` for base game.
 Steam must be reachable in the current desktop session. No direct executable

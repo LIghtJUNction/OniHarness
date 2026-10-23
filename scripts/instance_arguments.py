@@ -8,7 +8,7 @@ def validate_game_arguments(arguments):
         raise ValueError("gameArgs must be a list of explicit long mod flags")
     for option in arguments:
         if (not isinstance(option, str) or
-                not re.fullmatch(r"--[A-Za-z][A-Za-z0-9_-]*(?:=[^\s\x00]+)?", option) or
+                not re.fullmatch(r"--[A-Za-z][A-Za-z0-9_-]*(?:=(?:[^\s\x00-\x1f\x7f-\x9f]| )+)?", option) or
                 option.startswith("--oniharness-")):
             raise ValueError("Only explicit long mod flags may be forwarded")
         if "{" in option or "}" in option:

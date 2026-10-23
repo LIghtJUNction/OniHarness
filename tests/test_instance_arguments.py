@@ -1,4 +1,6 @@
+import json
 import pathlib
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -20,6 +22,28 @@ class ExternalControlArgumentsTests(unittest.TestCase):
             self.assertFalse((new / "command.json").exists())
             self.assertTrue((old / "command.json").exists())
             self.assertEqual(second[1], "--readonly")
+
+    def test_probe_path_with_spaces_and_shell_characters_remains_one_literal_argument(self):
+        arguments = [
+            "--onionline-probe=/private/test/xdg/unity3d/Klei/Oxygen Not Included/save_files",
+            "--label=literal $(touch marker); `echo bad` & < > | \"quoted\"",
+            "--readonly",
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            resolved = resolve_game_arguments(arguments, directory, "a" * 32)
+            result = subprocess.run(
+                [sys.executable, "-c", "import json, sys; print(json.dumps(sys.argv[1:]))", *resolved],
+                check=True, capture_output=True, text=True,
+            )
+        self.assertEqual(json.loads(result.stdout), arguments)
+
+    def test_control_characters_and_split_flags_are_rejected(self):
+        invalid = ["--probe /tmp/with spaces", "-- probe=/tmp/path", "--probe\t=/tmp/path"]
+        invalid.extend("--probe=/tmp/a" + chr(code) + "b" for code in [*range(32), *range(127, 160)])
+        invalid.extend("--probe=/tmp/a" + whitespace + "b" for whitespace in ["\u00a0", "\u2028", "\u2029", "\u3000"])
+        for value in invalid:
+            with self.subTest(value=repr(value)), self.assertRaises(ValueError):
+                validate_game_arguments([value])
 
     def test_unknown_templates_traversal_and_reserved_flags_are_rejected(self):
         for value in ["--probe={other}", "--probe={controlDir}/shared", "--probe={controlDir}/runs/{runNonce}/../probe",
