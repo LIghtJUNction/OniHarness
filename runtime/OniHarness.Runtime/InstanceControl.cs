@@ -30,6 +30,9 @@ namespace OniHarness.Runtime
         private bool loadDispatched;
         private string stepStartedAt;
         private SpeedControlScreen stepScreen;
+        private int? stepPauseCountBeforeRelease, stepPauseCountAfterRelease;
+        private string stepScreenStack;
+        private static readonly FieldInfo pauseCountField = typeof(SpeedControlScreen).GetField("pauseCount", BindingFlags.Instance | BindingFlags.NonPublic);
         private readonly Dictionary<string, object> assemblyReceipts = new Dictionary<string, object>(StringComparer.Ordinal);
         private readonly Dictionary<string, Response> responses = new Dictionary<string, Response>(StringComparer.Ordinal);
         private Response lastResponse;
@@ -171,12 +174,15 @@ namespace OniHarness.Runtime
                         RequireOwnedSave();
                         stepGame = Game.Instance;
                         stepScreen = SpeedControlScreen.Instance;
+                        stepPauseCountBeforeRelease = ReadNativePauseCount();
+                        stepScreenStack = KScreenManager.Instance == null ? null : KScreenManager.Instance.DebugScreenStack();
                         stepStart = GameClock.Instance.GetTime();
                         stepStartedAt = System.DateTime.UtcNow.ToString("o");
                         stepDeadline = DateTimeOffset.UtcNow.AddSeconds(command.Seconds);
                         runningStep = command;
                         // A single release preserves unexplained native/UI pause holds. Zero progress is a failed step.
                         stepScreen.Unpause(playSound: false);
+                        stepPauseCountAfterRelease = ReadNativePauseCount();
                         Publish(Result(command, "running"));
                         break;
                     case "load":
@@ -214,6 +220,15 @@ namespace OniHarness.Runtime
                             }
                         });
                         break;
+                    case "acknowledge-mod-differences":
+                        ValidateProfile();
+                        if (!IsLoaded() || SpeedControlScreen.Instance == null || !SpeedControlScreen.Instance.IsPaused)
+                            throw new InvalidOperationException("Acknowledgment requires a loaded paused native game.");
+                        RequireOwnedSave();
+                        AcknowledgeModDifferences(command.ExpectedTitle, command.ExpectedMessage);
+                        Pause();
+                        Publish(Result(command, "completed"));
+                        break;
                     case "quit":
                         if (runningStep != null) FinishStep("Step interrupted by quit command.");
                         Pause();
@@ -221,7 +236,7 @@ namespace OniHarness.Runtime
                         WriteStatus();
                         App.Quit();
                         break;
-                    default: throw new InvalidDataException("Allowed instance actions: pause, step, load, quit.");
+                    default: throw new InvalidDataException("Allowed instance actions: pause, step, load, acknowledge-mod-differences, quit.");
                 }
             }
             catch (Exception ex) { Publish(Result(command, "failed", ex.Message)); }
@@ -288,6 +303,69 @@ namespace OniHarness.Runtime
             if (screen != null && !screen.IsPaused) screen.Pause(playSound: false);
         }
 
+        private static int? ReadNativePauseCount()
+        {
+            var screen = SpeedControlScreen.Instance;
+            if (screen == null || pauseCountField == null) return null;
+            try { return pauseCountField.GetValue(screen) is int count ? (int?)count : null; }
+            catch { return null; } // Diagnostics never alter native pause ownership.
+        }
+
+        private static object[] ReadConfirmDialogs()
+        {
+            var result = new List<object>();
+            try
+            {
+                var manager = KScreenManager.Instance;
+                var stack = typeof(KScreenManager).GetField("screenStack", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(manager) as System.Collections.IEnumerable;
+                if (stack == null) return result.ToArray();
+                foreach (object screen in stack)
+                {
+                    if (screen == null || screen.GetType().Name != "ConfirmDialogScreen") continue;
+                    var type = screen.GetType();
+                    var active = type.GetProperty("isActiveAndEnabled")?.GetValue(screen, null);
+                    if (!(active is bool enabled) || !enabled) continue;
+                    Func<string, string> read = name =>
+                    {
+                        object label = type.GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(screen);
+                        string value = label?.GetType().GetProperty("text")?.GetValue(label, null) as string;
+                        return value == null ? null : value.Substring(0, Math.Min(value.Length, 4096));
+                    };
+                    result.Add(new { title = read("titleText"), message = read("popupMessage") });
+                }
+            }
+            catch { } // Optional read-only UI diagnostics cannot affect native control.
+            return result.ToArray();
+        }
+
+        private static void AcknowledgeModDifferences(string expectedTitle, string expectedMessage)
+        {
+            if (expectedTitle != "MOD DIFFERENCES" || expectedMessage == null ||
+                !expectedMessage.StartsWith("Save game mods differ from currently active mods:", StringComparison.Ordinal) || expectedMessage.Length > 4096)
+                throw new InvalidDataException("Explicit observed mod-differences title and message are required.");
+            var manager = KScreenManager.Instance;
+            var stack = typeof(KScreenManager).GetField("screenStack", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(manager) as System.Collections.IEnumerable;
+            object matched = null;
+            int activeCount = 0;
+            if (stack != null) foreach (object screen in stack)
+            {
+                if (screen == null || screen.GetType().Name != "ConfirmDialogScreen") continue;
+                var type = screen.GetType();
+                if (!(type.GetProperty("isActiveAndEnabled")?.GetValue(screen, null) is bool active) || !active) continue;
+                activeCount++;
+                Func<string, string> read = name =>
+                {
+                    object label = type.GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(screen);
+                    return label?.GetType().GetProperty("text")?.GetValue(label, null) as string;
+                };
+                if (read("titleText") == expectedTitle && read("popupMessage") == expectedMessage) matched = screen;
+            }
+            if (activeCount != 1 || matched == null) throw new InvalidOperationException("Observed native confirmation changed or is ambiguous.");
+            var confirm = matched.GetType().GetMethod("OnSelect_OK", BindingFlags.Instance | BindingFlags.Public, null, Type.EmptyTypes, null);
+            if (confirm == null) throw new InvalidOperationException("Native confirmation handler is unavailable.");
+            confirm.Invoke(matched, null);
+        }
+
         private void FinishStep(string failure)
         {
             var command = runningStep;
@@ -303,6 +381,9 @@ namespace OniHarness.Runtime
             result.SimulationSecondsBefore = stepStart;
             result.SimulationSecondsAfter = elapsed.HasValue ? stepStart + elapsed.Value : (double?)null;
             result.Paused = SpeedControlScreen.Instance != null && SpeedControlScreen.Instance.IsPaused;
+            result.PauseCountBeforeRelease = stepPauseCountBeforeRelease;
+            result.PauseCountAfterRelease = stepPauseCountAfterRelease;
+            result.ScreenStackBeforeRelease = stepScreenStack;
             Publish(result);
         }
 
@@ -364,6 +445,8 @@ namespace OniHarness.Runtime
                     (expectedUserRoot == null || SamePath(expectedUserRoot, actualRoot)),
                 gameLoaded = IsLoaded(), loadingSave, activeSavePath = SaveLoader.GetActiveSaveFilePath(), ownedSave,
                 paused = SpeedControlScreen.Instance == null ? (bool?)null : SpeedControlScreen.Instance.IsPaused,
+                nativePauseCount = ReadNativePauseCount(), timeScale = Time.timeScale,
+                confirmDialogs = ReadConfirmDialogs(),
                 simulationSeconds = GameClock.Instance == null ? (double?)null : GameClock.Instance.GetTime(),
                 stepId = runningStep?.Id, stepDeadlineUtc = runningStep == null ? (DateTimeOffset?)null : stepDeadline,
                 lastResponse, assemblyReceipt = "instance-assemblies.json", assemblyCount = assemblyReceipts.Count, error
@@ -406,6 +489,8 @@ namespace OniHarness.Runtime
             public double Seconds { get; set; }
             public string Path { get; set; }
             public string Sha256 { get; set; }
+            public string ExpectedTitle { get; set; }
+            public string ExpectedMessage { get; set; }
         }
         private sealed class Response
         {
@@ -419,6 +504,9 @@ namespace OniHarness.Runtime
             [JsonProperty("capturedAt")] public string CapturedAt { get; set; }
             [JsonProperty("nativeSeconds")] public double? NativeSeconds { get; set; }
             [JsonProperty("paused")] public bool? Paused { get; set; }
+            [JsonProperty("pauseCountBeforeRelease")] public int? PauseCountBeforeRelease { get; set; }
+            [JsonProperty("pauseCountAfterRelease")] public int? PauseCountAfterRelease { get; set; }
+            [JsonProperty("screenStackBeforeRelease")] public string ScreenStackBeforeRelease { get; set; }
             [JsonProperty("startedAt")] public string StartedAt { get; set; }
             [JsonProperty("completedAt")] public string CompletedAt { get; set; }
             [JsonProperty("simulationSecondsBefore")] public double? SimulationSecondsBefore { get; set; }

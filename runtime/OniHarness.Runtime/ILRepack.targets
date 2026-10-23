@@ -1,0 +1,12 @@
+<Project>
+  <Target Name="EmbedRuntimePLib" AfterTargets="Build" Condition="Exists('$(OutputPath)PLib.dll')">
+    <ItemGroup>
+      <RuntimeMergeAssemblies Include="$(OutputPath)$(TargetFileName)" />
+      <RuntimeMergeAssemblies Include="$(OutputPath)PLib.dll" />
+    </ItemGroup>
+    <ILRepack Parallel="true" DebugInfo="true" AllowDuplicateResources="true"
+      LibraryPath="$(ManagedPath)" InputAssemblies="@(RuntimeMergeAssemblies)"
+      TargetKind="SameAsPrimaryAssembly" OutputFile="$(OutputPath)$(TargetFileName)" />
+    <Delete Files="$(OutputPath)PLib.dll;$(OutputPath)PLib.xml" />
+  </Target>
+</Project>

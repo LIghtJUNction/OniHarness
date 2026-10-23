@@ -3,6 +3,8 @@ using System.IO;
 using HarmonyLib;
 using KMod;
 using Newtonsoft.Json;
+using PeterHan.PLib.Core;
+using PeterHan.PLib.Options;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -15,7 +17,11 @@ namespace OniHarness.Runtime
 
         public override void OnLoad(Harmony harmony)
         {
+            PUtil.InitLibrary();
+            RuntimeOptions.RegisterText();
             base.OnLoad(harmony);
+            new POptions().RegisterOptions(this, typeof(RuntimeOptions));
+            RuntimeOptions.Load();
             var args = Environment.GetCommandLineArgs();
             int index = Array.IndexOf(args, "--oniharness-control");
             // Installing the companion alone must not change normal gameplay.
@@ -23,6 +29,11 @@ namespace OniHarness.Runtime
             var root = Path.GetFullPath(args[index + 1]);
             Directory.CreateDirectory(root);
             controlRoot = root;
+            if (!RuntimeOptions.Current.AllowExplicitSessions)
+            {
+                RejectDisabledSession(root);
+                return;
+            }
             InstanceControl.Install(root);
             bool headless = Array.IndexOf(args, "--oniharness-headless") >= 0;
             if (headless && Application.isBatchMode && SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
@@ -38,7 +49,27 @@ namespace OniHarness.Runtime
 
         private static void TraceQuit(int exitCode)
         {
-            Debug.LogWarning("[OniHarness] Exit " + exitCode + "; crash=" + KCrashReporter.hasCrash + "\n" + Environment.StackTrace);
+            Debug.LogWarning("[OniHarness] Exit " + exitCode + "; crash=" + KCrashReporter.hasCrash +
+                (RuntimeOptions.Current.LogExitStackTrace ? "\n" + Environment.StackTrace : ""));
+        }
+
+        private static void RejectDisabledSession(string root)
+        {
+            const string message = "Explicit test sessions are disabled in OniHarness Runtime mod options. Enable them and restart through the test launcher.";
+            Debug.LogWarning("[OniHarness] " + message);
+            using (var process = System.Diagnostics.Process.GetCurrentProcess())
+            {
+                var receipt = JsonConvert.SerializeObject(new
+                {
+                    schema = 1, capturedAt = System.DateTime.UtcNow.ToString("o"), pid = process.Id,
+                    controlDisabled = true, error = message
+                });
+                var temporary = Path.Combine(root, "status.tmp");
+                File.WriteAllText(temporary, receipt);
+                var destination = Path.Combine(root, "status.json");
+                if (File.Exists(destination)) File.Replace(temporary, destination, null);
+                else File.Move(temporary, destination);
+            }
         }
 
         private static void TraceError(string error, string stack_trace)
@@ -123,13 +154,18 @@ namespace OniHarness.Runtime
             // Wake promptly for a new lease or pause transition, but keep the
             // periodic reconciliation if file notifications are delayed/lost.
             if (!changed && !transition && Time.realtimeSinceStartup < nextCheck) return;
-            nextCheck = Time.realtimeSinceStartup + 1f;
+            nextCheck = Time.realtimeSinceStartup + (float)RuntimeOptions.Current.StatusIntervalSeconds;
             try
             {
                 var path = Path.Combine(root, "render.json");
                 var settings = File.Exists(path)
                     ? JsonConvert.DeserializeObject<RenderSettings>(File.ReadAllText(path))
-                    : new RenderSettings();
+                    : new RenderSettings
+                    {
+                        Mode = RuntimeOptions.Current.ReduceRenderingByDefault ? "reduced" : "normal",
+                        Interval = RuntimeOptions.Current.ReducedRenderInterval,
+                        UpdateRate = RuntimeOptions.Current.ReducedUpdateRate
+                    };
                 if (settings == null || (settings.Mode != "normal" && settings.Mode != "reduced" && settings.Mode != "headless") ||
                     settings.Interval < 1 || settings.Interval > 120 || settings.UpdateRate < 15 || settings.UpdateRate > 240)
                     throw new InvalidDataException("Mode must be normal/reduced/headless, interval 1..120 and update rate 15..240.");

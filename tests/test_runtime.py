@@ -19,6 +19,53 @@ from measure_steps import require_log_markers
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_runtime_install_preserves_other_mods_and_reinstalls_licensed_companion(self):
+        import install_runtime
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            checkout, mods = root / "checkout", root / "mods"
+            mods.mkdir()
+            manifest = mods / "mods.json"
+            other = {"label": {"id": "OtherMod"}, "enabledForDlc": [""], "privateSetting": 19}
+            manifest.write_text(json.dumps({"mods": [other], "unrelated": {"keep": True}}))
+            output = checkout / "runtime/OniHarness.Runtime/bin/Release/net48"
+            output.mkdir(parents=True)
+            for name in install_runtime.RUNTIME_FILES:
+                (output / name).write_text("owned build artifact " + name)
+            argv = ["install_runtime.py", "--game-path", "/fake/game", "--mods-dir", str(mods),
+                    "--backup-dir", str(root / "backups")]
+            with patch("install_runtime.game_pids", return_value=[]), \
+                    patch("install_runtime.subprocess.run"), patch("install_runtime.ROOT", checkout), \
+                    patch.object(sys, "argv", argv), contextlib.redirect_stdout(io.StringIO()):
+                install_runtime.main()
+                install_runtime.main()
+            installed = mods / "Local/OniHarness.Runtime"
+            self.assertEqual({p.name for p in installed.iterdir()},
+                             {*install_runtime.RUNTIME_FILES, "mod.yaml", "mod_info.yaml"})
+            for name in install_runtime.RUNTIME_FILES:
+                self.assertEqual((installed / name).read_bytes(), (output / name).read_bytes())
+            document = json.loads(manifest.read_text())
+            self.assertEqual(document["mods"][0], other)
+            self.assertEqual(document["unrelated"], {"keep": True})
+            self.assertEqual(len(document["mods"]), 2)
+            self.assertEqual(len(list((root / "backups").glob("*.json"))), 2)
+
+    def test_runtime_install_still_rejects_unknown_companion_files_before_build(self):
+        import install_runtime
+        with tempfile.TemporaryDirectory() as temp:
+            mods = Path(temp)
+            (mods / "mods.json").write_text('{"mods": []}')
+            folder = mods / "Local/OniHarness.Runtime"
+            folder.mkdir(parents=True)
+            (folder / "unique-state.json").write_text("preserve")
+            with patch("install_runtime.game_pids", return_value=[]), \
+                    patch("install_runtime.subprocess.run") as build, \
+                    patch.object(sys, "argv", ["install_runtime.py", "--game-path", "/fake/game", "--mods-dir", temp]):
+                with self.assertRaisesRegex(RuntimeError, "unknown files"):
+                    install_runtime.main()
+                build.assert_not_called()
+            self.assertEqual((folder / "unique-state.json").read_text(), "preserve")
+
     def test_interrupted_mod_loader_is_rejected_and_owned_baseline_restores_only_its_flag(self):
         before = {"mod_load_in_progress": False}
         current = {"mod_load_in_progress": True, "mods": [{"newMetadata": 7}], "version": 1}

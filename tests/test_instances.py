@@ -405,6 +405,19 @@ class ControllerTests(unittest.TestCase):
                 self.controller.ensure_launcher(1)
             launch.assert_not_called()
 
+    def test_known_steam_wrapper_prefixes_preserve_exact_entrypoint(self):
+        entry = "/absolute path/steam_instance_entry.py"
+        for prefix in ("", "prime-run ", "gamemoderun ", "prime-run gamemoderun ", "gamemoderun prime-run "):
+            with self.subTest(prefix=prefix):
+                self.assertTrue(control.selects_steam_wrapper(prefix + 'python3 "' + entry + '" %command%', entry))
+        for option in ("env python3", "sh -c python3", "prime-run prime-run python3", "unknown python3"):
+            self.assertFalse(control.selects_steam_wrapper(option + ' "' + entry + '" %command%', entry))
+        for option in ('python3 "' + entry + '" %command% --extra',
+                       'python3 "' + entry + '" %command% ; other-command',
+                       'python3 /wrong/steam_instance_entry.py %command%',
+                       'python3 "unterminated %command%'):
+            self.assertFalse(control.selects_steam_wrapper(option, entry))
+
     def test_owned_launch_request_is_reaped_before_resource_sampling(self):
         child = subprocess.Popen([sys.executable, "-c", "pass"])
         self.controller.launch_requests.append(child)

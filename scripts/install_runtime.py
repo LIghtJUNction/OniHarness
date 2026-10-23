@@ -13,6 +13,7 @@ from runtime_mcp import atomic_json
 
 ROOT = Path(__file__).resolve().parents[1]
 STATIC_ID = "LIghtJUNction.OniHarness.Runtime"
+RUNTIME_FILES = ("OniHarness.Runtime.dll", "LICENSE", "LICENSING.md", "THIRD_PARTY_NOTICES.txt")
 
 
 def require_idle_mod_loader(document):
@@ -69,16 +70,20 @@ def main():
     if entry is None and any(m.get("label", {}).get("id") == "OniHarness.Runtime" for m in entries):
         raise RuntimeError("Mod id already belongs to a different staticID; manifest left untouched")
     folder = args.mods_dir / "Local" / "OniHarness.Runtime"
-    if folder.exists() and any(p.name not in {"OniHarness.Runtime.dll", "mod.yaml", "mod_info.yaml"} for p in folder.iterdir()):
+    if folder.exists() and any(p.name not in {*RUNTIME_FILES, "mod.yaml", "mod_info.yaml"} for p in folder.iterdir()):
         raise RuntimeError("Existing companion directory has unknown files; preserve it and inspect first")
     subprocess.run(["dotnet", "build", "runtime/OniHarness.Runtime", "-c", "Release",
                     "-p:OniGamePath=" + str(args.game_path.resolve()), "--nologo"], cwd=ROOT, check=True)
+    output = ROOT / "runtime/OniHarness.Runtime/bin/Release/net48"
+    if any(not (output / name).is_file() for name in RUNTIME_FILES):
+        raise RuntimeError("Companion build is missing its DLL or required license notices")
     backup = args.backup_dir / ("mods-before-" + uuid.uuid4().hex + ".json")
     backup.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(manifest, backup)
     folder.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(ROOT / "runtime/OniHarness.Runtime/bin/Release/net48/OniHarness.Runtime.dll", folder)
-    (folder / "mod.yaml").write_text('title: "OniHarness Runtime"\ndescription: "Optional rendering control; native game simulation."\nstaticID: ' + STATIC_ID + '\n')
+    for name in RUNTIME_FILES:
+        shutil.copy2(output / name, folder)
+    (folder / "mod.yaml").write_text('title: "OniHarness Runtime"\ndescription: "Configurable test companion; control requires an explicit test launch."\nstaticID: ' + STATIC_ID + '\n')
     (folder / "mod_info.yaml").write_text('minimumSupportedBuild: 744825\nAPIVersion: 2\nversion: "0.1.0"\n')
     if entry is None:
         entry = {"label": {"distribution_platform": 0, "id": "OniHarness.Runtime", "title": "OniHarness Runtime", "version": 0},

@@ -42,6 +42,12 @@ and entitlement checks. It does not forge different Steam accounts. Same-account
 processes are suitable for LAN roles only if the mod gives them separate connection
 identities; they do not prove separate-account Steam P2P behavior.
 
+The same exact Python entrypoint and final `%command%` may have `prime-run`,
+`gamemoderun`, or both (in either order) in front. These known exec-style wrappers
+remain in the Steam launch chain and are not removed or rewritten. Unknown
+prefixes, wrapper arguments, extra trailing commands and malformed quoting are
+rejected before launch; this is not a general shell-command parser.
+
 There is no verified public shell API for changing this option in a running Steam
 client. The controller reads only the active login's exact target app setting and
 never modifies Steam's active `localconfig.vdf`, kills Steam, enables an internal
@@ -206,6 +212,17 @@ the resident Steam wrapper. Failed exit prevents overwrite. Hash receipts come
 from the loaded assemblies' actual file locations, not only desired build files.
 An unknown ONI process owned by another task blocks new launches/deployment.
 No automatic force kill exists.
+
+Instance telemetry includes read-only `nativePauseCount` and `timeScale` values.
+The native `acknowledge-mod-differences` command requires a loaded paused approved save and the exact previously observed `expectedTitle` and `expectedMessage`. It accepts only the English `MOD DIFFERENCES` warning, requires one active confirmation and invokes its normal `OnSelect_OK` handler once. Changed text, another confirmation type, ambiguous confirmations and errors fail closed. It then preserves a paused state; it never drains native pause counts. This is explicit acceptance of a changed test mod configuration, not evidence that the save is semantically comparable to its original configuration.
+
+Status also includes bounded title/message text for active native confirmation dialogs, read through optional reflection. This is local diagnostic data and may contain save-specific text; no dialog is dismissed or pause released by inspection.
+
+Pause count is nullable when the inspected native private field is unavailable.
+Completed/failed step responses retain the counts before and after their single
+native unpause. A remaining hold is diagnostic evidence, never permission to
+release another hold or dismiss a native modal. Zero native progress remains a
+failed step; these observations do not change simulation or pause ownership.
 
 The daemon can be stopped and restarted without automatically killing games.
 Its private state retains PID plus Linux process start ticks to reject PID reuse.
