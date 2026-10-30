@@ -1,117 +1,143 @@
-# OniHarness
+<div align="center">
+  <h1>OniHarness</h1>
+  <p><strong>Test Oxygen Not Included mods without confusing fixtures, native simulation, and real gameplay.</strong></p>
+  <p>Game-free tests · installed native solver · experimental headless ONI · repeatable evidence</p>
 
-**ONI mod testing, with game-free fixtures and real headless gameplay.**
+  [![Version](https://img.shields.io/badge/version-0.1.0-111111?style=flat-square)](CHANGELOG.md)
+  [![.NET](https://img.shields.io/badge/.NET-10-111111?style=flat-square&logo=dotnet)](Directory.Build.props)
+  [![Python](https://img.shields.io/badge/Python-3.15-111111?style=flat-square&logo=python)](pyproject.toml)
+  [![License](https://img.shields.io/badge/license-AUL%201.0--draft.1-111111?style=flat-square)](LICENSE)
 
-[简体中文](README_ZH.md) · [Real-game / text view](docs/runtime.md) · [Architecture](docs/architecture.md) · [Supported capabilities](docs/capabilities.md)
+  [简体中文](README_ZH.md) · [Quick start](#quick-start) · [Evidence levels](#choose-the-right-evidence-level) · [Python](docs/python.md) · [Runtime](docs/runtime.md) · [Capabilities](docs/capabilities.md)
+</div>
 
-## Python API
+<p align="center">
+  <img src="docs/images/physics-playground.gif" width="760" alt="Recorded native ONI physics fixture with water flow, partition removal and heating">
+</p>
 
-Use `uv add oniharness` (or `uv pip install oniharness`) to drive native JSON/C#
-tests and pause-verified OniMcp observations from Python. Development uses
-Python 3.15 and uv. Native tests require the separate .NET backend and your local
-game installation; paused game observations connect to an already running OniMcp.
-See the [Python guide and runnable examples](docs/python.md).
+<p align="center"><em>A recorded fixture driven by the installed ONI native simulation library—not a game screenshot or colony save.</em></p>
 
-For native colony gameplay, use the experimental [headless workflow](docs/runtime.md):
-Steam starts the real ONI engine with **no game window and no graphics device**.
-`python3 scripts/runtime.py launch` defaults to `-batchmode -nographics` and
-requires verified engine telemetry. It never falls back to a graphical client.
-An optional text spectator displays the exact observations returned to the AI.
-Compatibility needs testing per game/save/mod combination; this is not a claim
-that every mod or graphics-dependent feature works headlessly.
+## Choose the right evidence level
 
-The original harness runs small, repeatable tests in isolated worker processes. It can drive
-the **real installed ONI native simulation library** without launching ONI,
-Steam, a Unity Player, a display server, or a colony save.
+OniHarness exposes three deliberately different test paths:
 
-This is an early **0.1.0 preview**, not a complete replacement for ONI. The verified
-native adapter currently supports **Linux x64, ONI build 744825**, with exact file
-fingerprints. Other builds fail explicitly instead of silently using a mismatched
-protocol. See [capabilities](docs/capabilities.md) before choosing a test.
+| Level | What actually runs | Needs installed ONI | What it can prove |
+| --- | --- | ---: | --- |
+| **Game-free managed tests** | OniHarness workers and your portable .NET helpers | No | CLI, discovery, assertions, process isolation and logic that does not call Unity internals |
+| **Native simulation fixtures** | The real installed ONI native simulation library | Yes | Selected gas, liquid, solid and heat behavior in small controlled worlds |
+| **Experimental headless gameplay** | Steam starts the real ONI engine with `-batchmode -nographics` | Yes | Selected full-engine behavior, saves and OniMcp observations for a specific game/mod/save combination |
+
+These levels are not interchangeable:
+
+```text
+metadata check < managed host < native simulation < real game runtime
+```
+
+A metadata match does not prove a method executes. A native fixture does not prove Unity lifecycle compatibility. A headless launch on one save does not prove every mod or graphics-dependent feature works.
+
+> [!IMPORTANT]
+> This is an early `0.1.0` preview, not a replacement for ONI. The verified native adapter currently supports **Linux x64, ONI build 744825**, with exact file fingerprints. Other builds fail explicitly instead of silently using a mismatched protocol.
 
 ## What you can test
 
 - Gas mass conservation, liquid movement and solid heat transfer with the real native solver.
-- Custom material parameters, cell replacement and energy injection in small fixture worlds.
-- Your own C# mod helpers using `[HarnessTest]`, with process isolation and assertion failures.
-- Selected installed game C# methods that can execute in a .NET host without Unity internal calls.
-- The existence of a game method by type, name and parameter count, using metadata only.
+- Custom element parameters, cell replacement and energy injection in compact fixtures.
+- Public static C# helpers marked with `[HarnessTest]`, isolated in worker processes.
+- Selected installed game C# methods that execute in a .NET host without Unity internal calls.
+- Method existence by type, name and parameter count using metadata only.
+- Experimental real-engine headless sessions and pause-verified OniMcp observations.
 
-Each scenario/repetition gets a fresh process. Timeouts terminate the worker
-process tree; crashes, unsupported adapters and empty test runs are failures.
-`--repeat` compares final native state fingerprints between runs.
+Every scenario and repetition starts in a fresh process. Timeouts terminate the worker process tree. Crashes, unsupported adapters, empty selections and incomplete observations are failures. `--repeat` compares final native-state fingerprints between runs.
 
-## Run from source
+## Quick start
 
-Requirements: .NET SDK 10. A local Linux ONI installation is needed only for tests
-that use game files. Public CI and the framework's own behavioral tests need no game.
+Requirements: .NET SDK 10. A local Linux ONI installation is required only for game-dependent paths.
 
-```sh
+```bash
 git clone https://github.com/LIghtJUNction/OniHarness.git
 cd OniHarness
+
 dotnet build OniHarness.slnx -c Release
 dotnet run --project tests/OniHarness.Tests -c Release --no-build
+```
 
+Point the harness at a local installation, then inspect it without loading game code:
+
+```bash
 export ONIHARNESS_GAME_PATH="$HOME/.local/share/Steam/steamapps/common/OxygenNotIncluded"
+
 dotnet run --project src/OniHarness.Cli -c Release --no-build -- doctor
+```
+
+Run native scenarios three times and write an evidence report:
+
+```bash
 dotnet run --project src/OniHarness.Cli -c Release --no-build -- \
-  test examples/scenarios --repeat 3 --report artifacts/native.json
+  test examples/scenarios \
+  --repeat 3 \
+  --report artifacts/native.json
+```
+
+Run a compiled mod-test assembly:
+
+```bash
 dotnet run --project src/OniHarness.Cli -c Release --no-build -- \
   test --assembly examples/ModTests/bin/Release/net10.0/ModTests.dll
 ```
 
-Use `--game-path PATH` instead of the environment variable if preferred. `doctor`
-hashes files and reports the adapter without loading game code.
+Use `--game-path PATH` instead of the environment variable when preferred.
 
-## Install the CLI
+## Python API
 
-Download the package ZIP from [Releases](https://github.com/LIghtJUNction/OniHarness/releases),
-extract it, then install from that local package directory:
+Install the Python package with uv:
 
-```sh
-dotnet tool install --tool-path .tools --add-source ./packages \
-  --ignore-failed-sources OniHarness.Cli --version 0.1.0
-.tools/oniharness --help
+```bash
+uv add oniharness
+# or: uv pip install oniharness
 ```
 
-The release provides `OniHarness.Cli` and `OniHarness.Core` packages. They are
-downloadable release artifacts; publication to nuget.org is a separate step.
+The API can drive native JSON/C# tests and pause-verified OniMcp observations. Native tests still require the separate .NET backend and local game files; runtime observations connect to an already running OniMcp instance.
 
-## Agent skill and physics replay (source checkout)
+See the [Python guide and runnable examples](docs/python.md).
 
-The repository includes an [oni-harness skill](.agents/skills/oni-harness/SKILL.md)
-for agents working with headless tests. It distinguishes real native fixtures
-from .NET-host tests and full colony gameplay. This skill and playground are
-source-checkout additions after the v0.1.0 release; use the current repository.
+## Native physics playground
 
-```sh
-python3 scripts/physics_playground.py --game-path /path/to/OxygenNotIncluded \
-  --repeat 2 --output artifacts/physics-playground
+The source checkout includes a state-driven demonstration:
+
+```bash
+python3 scripts/physics_playground.py \
+  --game-path /path/to/OxygenNotIncluded \
+  --repeat 2 \
+  --output artifacts/physics-playground
 ```
 
-Open the resulting `index.html` for a self-contained state replay: falling
-water, removal of three partition cells, water crossing to another chamber,
-then energy injection into an observed water cell. The controller waits for
-measured target states and stops if a phase exceeds its step budget. Tests
-check gravity, water mass, flow and heating. Intentional solid removal is
-accounted for separately from unintended mass loss.
+The controller waits for measured states before advancing:
 
-Each run gets a new trace directory. `trace.json` retains every sampled cell,
-fixture inputs, actions, checks and file fingerprints; `summary.json` compares
-independent final states. A failed/unsupported/timed-out run stays a failure.
-Use `--phase-step-limit 20` for a deliberately short observation budget to
-verify that the controller stops before issuing the next action.
+```text
+water falls
+    ↓
+three partition cells are removed
+    ↓
+water crosses into the second chamber
+    ↓
+energy is injected into an observed water cell
+```
 
-Add `--gif` to also render `replay.gif` and `overview.png` when Pillow is already
-installed. HTML needs no optional Python dependencies. The visualization is a
-recorded physics fixture, not an ONI screenshot, save or duplicant playthrough.
+Each run writes a new trace directory. `trace.json` records every sampled cell, fixture input, action, check and file fingerprint. `summary.json` compares independent final states. A failed, unsupported or timed-out run remains a failure.
 
-![Recorded native physics fixture: water, partition removal and heating](docs/images/physics-playground.gif)
+Open `index.html` for a dependency-free replay. Add `--gif` to render `replay.gif` and `overview.png` when Pillow is already installed.
 
-[Measured playground results](docs/verification/playground.json) include the
-accepted binary hashes, phase checks and a deliberately rejected short-budget run.
+To verify that the controller stops instead of issuing actions after insufficient observation:
 
-## Write a scenario
+```bash
+python3 scripts/physics_playground.py \
+  --game-path /path/to/OxygenNotIncluded \
+  --phase-step-limit 20
+```
+
+Measured accepted fingerprints, phase checks and the intentionally rejected short-budget run are recorded in [playground verification](docs/verification/playground.json).
+
+## Write a native scenario
 
 ```json
 {
@@ -119,37 +145,45 @@ accepted binary hashes, phase checks and a deliberately rejected short-budget ru
   "width": 16,
   "height": 16,
   "steps": 50,
-  "fill": { "element": "Oxygen", "mass": 1, "temperature": 300 },
+  "fill": {
+    "element": "Oxygen",
+    "mass": 1,
+    "temperature": 300
+  },
   "assertions": [
-    { "kind": "massConserved", "absoluteTolerance": 0.01 }
+    {
+      "kind": "massConserved",
+      "absoluteTolerance": 0.01
+    }
   ]
 }
 ```
 
-```sh
-oniharness test my-test.json --game-path /path/to/OxygenNotIncluded --repeat 3
+```bash
+oniharness test my-test.json \
+  --game-path /path/to/OxygenNotIncluded \
+  --repeat 3
 ```
 
-Temperatures are Kelvin, mass is kilograms, energy is kilojoules. Coordinates
-start at the lower left; `x` increases right and `y` increases up. Dimensions are
-16..512 cells. Regions apply after the default sealed boundary. The default step
-is 0.2 simulation seconds; the process timeout is 20 wall-clock seconds.
+Units and geometry:
 
-Available assertions are `massConserved`, `totalMass`, `cellMass`, and
-`cellTemperature`. Range assertions accept `min` and/or `max`; cell assertions
-also require `x` and `y`. Invalid/unknown JSON properties fail. CLI scenarios
-require at least one assertion and always check finite, non-negative state.
+| Value | Contract |
+| --- | --- |
+| Temperature | Kelvin |
+| Mass | kilograms |
+| Energy | kilojoules |
+| Origin | lower-left cell |
+| Dimensions | 16–512 cells |
+| Default step | 0.2 simulation seconds |
+| Default process timeout | 20 wall-clock seconds |
 
-**Fixture elements are explicit test inputs.** The small built-in table is not
-the game's complete material database. Phase transitions, diseases and radiation
-are disabled in this adapter. To test your mod's parameters, provide your own
-`elements` list in JSON or construct it in C#, keeping the required Vacuum, Void
-and Unobtanium entries. See [the custom material example](examples/ModTests/ExampleTests.cs).
+Available assertions are `massConserved`, `totalMass`, `cellMass` and `cellTemperature`. Unknown JSON properties fail. CLI scenarios require at least one assertion and always reject non-finite or negative state.
+
+Fixture elements are explicit test inputs. The small built-in table is not ONI's full material database. Phase transitions, diseases and radiation are disabled in this adapter. Supply your mod's element parameters when those values matter; see the [custom material example](examples/ModTests/ExampleTests.cs).
 
 ## Write C# tests
 
-Create a .NET 10 class library referencing `OniHarness.Core` (a project reference
-or the release package), then add public static methods:
+Create a .NET 10 class library referencing `OniHarness.Core`:
 
 ```csharp
 using OniHarness;
@@ -168,64 +202,112 @@ public static class MyModTests
 }
 ```
 
-```sh
-oniharness test --assembly path/to/MyMod.Tests.dll --game-path /path/to/ONI
-oniharness test --assembly path/to/MyMod.Tests.dll --filter MyMaterial --timeout 30
+```bash
+oniharness test \
+  --assembly path/to/MyMod.Tests.dll \
+  --game-path /path/to/ONI
+
+oniharness test \
+  --assembly path/to/MyMod.Tests.dll \
+  --filter MyMaterial \
+  --timeout 30
 ```
 
-Tests accept zero parameters or one `HarnessContext`, and return `void` or `Task`.
-`async void` is rejected. Native worlds must be used synchronously on their
-creating thread; only one native world may be created per worker process.
-`SetCell` and `AddEnergy` queue operations; call `Step` before reading their effects.
-Heat can move into neighboring cells, so choose assertions appropriate to the
-material and elapsed simulation time.
+Tests may take zero parameters or one `HarnessContext`, and return `void` or `Task`. `async void` is rejected. Native worlds must remain on their creating thread, and each worker process may create only one native world.
 
-For existing net48 mods, reference or link portable production helpers into a
-net10.0 test project. This does not establish Mono or Unity runtime compatibility.
-`InvokeGameStatic` executes the original installed managed method in the .NET
-host; it supplies no fake Unity implementation. Methods requiring Unity internal
-calls will fail. Harmony patch execution and full mod lifecycle are not supported
-by this preview.
+`SetCell` and `AddEnergy` queue operations; call `Step` before observing effects. Heat can move to neighboring cells, so assertions must match the material and elapsed simulation time.
 
-Static method checks are available separately:
+Existing net48 mod helpers can be linked into a net10.0 test project when portable. Passing there does not establish Mono or Unity compatibility. `InvokeGameStatic` executes an installed managed method in the .NET host without providing fake Unity internals.
 
-```sh
+## Metadata contracts
+
+```bash
 oniharness contract /path/to/Assembly-CSharp.dll \
-  --type Sim --method GetHandleIndex --parameters 1
+  --type Sim \
+  --method GetHandleIndex \
+  --parameters 1
 ```
 
-This checks only metadata, not overload parameter types, method bodies or Harmony
-compatibility.
+This checks metadata presence only. It does not validate overload parameter types, execute the method, inspect its body or prove Harmony patch compatibility.
+
+## Experimental real-game runtime
+
+The [runtime workflow](docs/runtime.md) launches the actual ONI engine through Steam with:
+
+```text
+-batchmode -nographics
+```
+
+It requires verified engine telemetry and never falls back to a graphical client. An optional text spectator displays the same observations returned to the AI.
+
+Use it only after checking compatibility for the exact game build, save, DLC and mod set. Real headless execution can cover behavior the fixture adapter cannot, but it is slower, more stateful and still does not make every graphics-dependent feature valid.
 
 ## Reports and automation
 
-`--report FILE` writes JSON with evidence, status, elapsed time, worker exit code,
-bounded output and, for native scenarios, adapter, binary hash, completed steps,
-mass totals and final state fingerprint. Evidence labels are `native-sim`,
-`managed-host`, and `metadata-only`. C# tests using the context's native/game-code
-entrypoints also report `+native-sim`/`+game-code` and the relevant fingerprints.
-None is an in-game acceptance claim.
+`--report FILE` writes bounded JSON evidence with status, elapsed time, worker exit code and output. Native reports also include adapter identity, binary hash, completed steps, mass totals and final-state fingerprint.
 
-Exit codes: **0** all selected tests passed; **1** a test failed, timed out,
-crashed or was unsupported; **2** command/configuration/discovery error. A report
-is produced for completed test runs; setup errors are written to stderr.
+Evidence labels are explicit:
 
-Run `python3 scripts/verify.py` for game-free verification and package checks.
-Pass `--game-path PATH` to additionally run real native scenarios three times
-and all C# examples. CI runs only the game-free portion. Use your own runner
-with your local installation for game-dependent tests; game files are never
-downloaded or uploaded by the workflow.
+| Label | Meaning |
+| --- | --- |
+| `metadata-only` | assembly metadata was inspected |
+| `managed-host` | code executed in the .NET host |
+| `native-sim` | installed ONI native simulation was called |
+| `+game-code` | an installed managed game method was invoked |
 
-Test assemblies are trusted code, not a security sandbox. Process isolation
-contains crashes and timeouts; it does not restrict a test's file/network access.
+None of those labels alone means “accepted in an actual colony.”
 
-## Project and license
+Exit codes:
 
-OniHarness is independently usable and also linked as an OniMods Git submodule.
-It is an unofficial community tool, not affiliated with Klei or Unity.
+| Code | Meaning |
+| ---: | --- |
+| `0` | every selected test passed |
+| `1` | failure, timeout, crash or unsupported adapter |
+| `2` | command, configuration or discovery error |
 
-Original framework code is licensed under **AUL 1.0-draft.1**, as requested by the
-maintainer. AUL is a custom license and is **not OSI-approved**. Read
-[LICENSE](LICENSE), [LICENSING.md](LICENSING.md), and [UPSTREAM.toml](UPSTREAM.toml).
-ONI, Unity, .NET and any mod you test remain separate works with their own terms.
-No game DLLs, assets, decompiled implementation source or colony saves are included.
+Game-free verification and package checks:
+
+```bash
+python3 scripts/verify.py
+```
+
+Add `--game-path PATH` to run real native scenarios three times and all C# examples. Public CI runs only the game-free portion and never downloads or uploads game files.
+
+Test assemblies are trusted code, not a security sandbox. Process isolation contains crashes and timeouts; it does not remove file or network access.
+
+## Install the CLI package
+
+When a release package ZIP is available, extract it and install from its local package directory:
+
+```bash
+dotnet tool install \
+  --tool-path .tools \
+  --add-source ./packages \
+  --ignore-failed-sources \
+  OniHarness.Cli \
+  --version 0.1.0
+
+.tools/oniharness --help
+```
+
+`OniHarness.Cli` and `OniHarness.Core` packages may be attached to repository releases. That is separate from publication to nuget.org; inspect the specific release assets rather than assuming a public NuGet package exists.
+
+## Repository map
+
+```text
+src/OniHarness.Core/      scenarios, workers, adapters and evidence
+src/OniHarness.Cli/       command-line interface
+src/OniHarness.Python/    Python-facing integration
+examples/                 native fixtures and C# tests
+scripts/                  verification, runtime and replay tools
+docs/                     architecture, capabilities and evidence
+.agents/skills/           agent workflow for choosing the right test level
+```
+
+OniHarness is independently usable and is also linked as an OniMods submodule.
+
+## License and project status
+
+OniHarness is an unofficial community project, not affiliated with Klei or Unity. No game DLLs, assets, decompiled implementation source or colony saves are included.
+
+Original framework code uses [AUL 1.0-draft.1](LICENSE), a custom license that is not OSI-approved. Read [LICENSING.md](LICENSING.md) and [UPSTREAM.toml](UPSTREAM.toml). ONI, Unity, .NET and tested mods remain separate works under their own terms.
