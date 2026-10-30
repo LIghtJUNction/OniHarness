@@ -433,13 +433,15 @@ class ControllerTests(unittest.TestCase):
     def test_previous_chain_exit_status_cannot_abort_a_new_start(self):
         status = {"pid": 123, "runNonce": "new-native"}
         stale = {"pid": 555, "children": {"guest1": {"pid": 888, "exitCode": 0}}}
+        command = ["/fixture/steam", "-applaunch", control.APP_ID]
         with patch.object(self.controller, "live", return_value=False), \
              patch.object(control.shutil, "which", return_value="/fixture/steam"), \
              patch.object(self.controller, "chain_identity", return_value=None), \
              patch.object(control, "game_processes", return_value={}), \
              patch.object(self.controller, "preflight"), \
              patch.object(self.controller, "ensure_launcher", return_value={"pid": 555}), \
-             patch.object(self.controller, "launcher_command", return_value={"pid": 999}), \
+             patch.object(self.controller, "launch_command", wraps=self.controller.launch_command) as launch_command, \
+             patch.object(self.controller, "launcher_command", return_value={"pid": 999}) as launch, \
              patch.object(control.ProcessIdentity, "capture", side_effect=lambda pid: control.ProcessIdentity(pid, 20)), \
              patch.object(self.controller, "observe_native_pid"), \
              patch.object(self.controller, "read_status", side_effect=[OSError("not ready yet"), status]) as read, \
@@ -450,6 +452,12 @@ class ControllerTests(unittest.TestCase):
         self.assertFalse(result["reused"])
         self.assertEqual(result["status"]["pid"], 123)
         self.assertEqual(read.call_count, 2)
+        launch_command.assert_called_once_with("guest1")
+        launch.assert_called_once_with("start", "guest1")
+        receipt = json.loads((self.controller.paths("guest1")["control"] / "launch.json").read_text())
+        self.assertEqual(receipt["command"][:3], command)
+        self.assertEqual(receipt["command"][3:], ["--oniharness-group", str(self.controller.root),
+            "--oniharness-group-token", json.loads((self.controller.root / "controller.json").read_text())["token"]])
 
     def test_interrupted_start_recovers_its_confirmed_child_without_deploy(self):
         self.controller.prepare("guest1")

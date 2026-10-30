@@ -6,6 +6,8 @@ import sys
 import tempfile
 import threading
 import unittest
+import itertools
+import subprocess
 from unittest.mock import patch
 import contextlib
 import io
@@ -16,6 +18,7 @@ from runtime import observe, main, read_status, validate_headless, wait_ready
 from runtime_mcp import Client, decode_text, payload
 from install_runtime import enable_entry, require_idle_mod_loader, restore_mod_loader_state
 from measure_steps import require_log_markers
+import measure_steps
 
 
 class RuntimeTests(unittest.TestCase):
@@ -214,6 +217,256 @@ class RuntimeTests(unittest.TestCase):
             recorded = json.loads((Path(temp) / "latest.json").read_text(encoding="utf-8"))
             self.assertEqual(returned["map"], original_map)
             self.assertEqual(recorded, returned)
+
+
+class MeasurementTests(unittest.TestCase):
+    @staticmethod
+    def status(**changes):
+        return {"pid": 42, "gameLoaded": True, "paused": True, "frameCount": 100,
+                "unity": "test-only", "headless": True, **changes}
+
+    @staticmethod
+    def process(**changes):
+        return {"startTicks": 500, "cpuSeconds": 2.0, "majorFaults": 0,
+                "rssKiB": 100, "swapKiB": 0, **changes}
+
+    @staticmethod
+    def step(advanced=1.0, **changes):
+        return subprocess.CompletedProcess([], 0, json.dumps({"simulationSecondsAdvanced": advanced,
+            "timings": {"runningWallSeconds": 1.0}, **changes}), "")
+
+    @contextlib.contextmanager
+    def measurement(self, output, *, samples=1, warmup=0, statuses=None, processes=None, results=None, clock=None):
+        attempts = samples + warmup
+        with patch.object(sys, "argv", ["measure_steps.py", "--output", str(output), "--label", "candidate",
+                "--samples", str(samples), "--warmup", str(warmup), "--seconds", "1"]), \
+                patch("measure_steps.read_status", side_effect=statuses or
+                      [self.status()] + [value for _ in range(attempts) for value in
+                      (self.status(), self.status(frameCount=110))]), \
+                patch("measure_steps.process_sample", side_effect=processes or
+                      [value for _ in range(attempts) for value in
+                      (self.process(), self.process(cpuSeconds=3.0))]), \
+                patch("measure_steps.time.monotonic", side_effect=clock or itertools.count(step=2)), \
+                patch("measure_steps.subprocess.run", side_effect=results or [self.step()] * attempts) as run, \
+                patch("measure_steps.os.getloadavg", return_value=(0.0, 0.0, 0.0), create=True), \
+                contextlib.redirect_stdout(io.StringIO()):
+            yield run
+
+    @staticmethod
+    def report(output):
+        # A report must be standard JSON even when rejecting non-finite input.
+        def reject_constant(value):
+            raise AssertionError("Non-finite number in evidence: " + value)
+        return json.loads((output / "step-benchmark-candidate.json").read_text(encoding="utf-8"), parse_constant=reject_constant)
+
+    def test_existing_evidence_is_preserved_before_any_step(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            destination = output / "step-benchmark-candidate.json"
+            original = b'{"complete": false, "error": "previous failed run"}\n'
+            destination.write_bytes(original)
+            with self.measurement(output) as run, self.assertRaises(FileExistsError):
+                measure_steps.main()
+            run.assert_not_called()
+            self.assertEqual(destination.read_bytes(), original)
+
+    def test_running_attempt_reserves_label_and_records_identity_before_step(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+
+            def step(*args, **kwargs):
+                report = self.report(output)
+                self.assertFalse(report["complete"])
+                self.assertEqual(report["processIdentity"], {"pid": 42, "startTicks": 500})
+                self.assertEqual(report["attempts"][0]["stage"], "step")
+                with self.assertRaises(FileExistsError):
+                    measure_steps.main()
+                self.assertEqual(self.report(output), report)
+                return self.step()
+
+            with self.measurement(output, results=step) as run:
+                measure_steps.main()
+            self.assertEqual(run.call_count, 1)
+            report = self.report(output)
+            self.assertTrue(report["complete"])
+            self.assertEqual(report["samples"][0]["gameCpuSecondsPerNativeSecond"], 1.0)
+            self.assertEqual(report["samples"][0]["updateFrames"], 10)
+
+    def test_preflight_failure_is_retained_without_controlling_game(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            with self.measurement(output, statuses=[self.status(paused=False)]) as run, \
+                    self.assertRaisesRegex(RuntimeError, "paused loaded"):
+                measure_steps.main()
+            run.assert_not_called()
+            report = self.report(output)
+            self.assertFalse(report["complete"])
+            self.assertEqual(report["attempts"], [])
+            self.assertIn("paused loaded", report["error"])
+
+    def test_warmups_are_retained_but_excluded_from_measured_summary(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            with self.measurement(output, warmup=1, results=[self.step(.5), self.step(2.0)]):
+                measure_steps.main()
+            report = self.report(output)
+            self.assertTrue(report["complete"])
+            self.assertEqual([attempt["warmup"] for attempt in report["attempts"]], [True, False])
+            self.assertEqual([attempt["measurement"]["nativeSeconds"] for attempt in report["attempts"]], [.5, 2.0])
+            self.assertEqual(len(report["samples"]), 1)
+            self.assertEqual(report["summary"]["gameCpuSecondsPerNativeSecond"]["median"], .5)
+
+    def test_failed_step_keeps_previous_samples_and_stderr(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            failed = subprocess.CompletedProcess([], 3, "partial output", "game step refused")
+            with self.measurement(output, samples=2, results=[self.step(), failed]), \
+                    self.assertRaisesRegex(RuntimeError, "game step refused"):
+                measure_steps.main()
+            report = self.report(output)
+            self.assertFalse(report["complete"])
+            self.assertEqual(len(report["samples"]), 1)
+            self.assertEqual(len(report["attempts"]), 2)
+            self.assertFalse(report["attempts"][0]["failed"])
+            failure = report["attempts"][1]
+            self.assertTrue(failure["failed"])
+            self.assertEqual(failure["stage"], "step")
+            self.assertEqual(failure["stepExitCode"], 3)
+            self.assertEqual(failure["stdout"], "partial output")
+            self.assertEqual(failure["stderr"], "game step refused")
+
+    def test_failed_warmup_is_retained_and_stops_measurement(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            failed = subprocess.CompletedProcess([], 2, "", "warmup failed")
+            with self.measurement(output, warmup=1, results=[failed]) as run, self.assertRaises(RuntimeError):
+                measure_steps.main()
+            self.assertEqual(run.call_count, 1)
+            report = self.report(output)
+            self.assertEqual(report["samples"], [])
+            self.assertTrue(report["attempts"][0]["warmup"])
+            self.assertTrue(report["attempts"][0]["failed"])
+
+    def test_timeout_preserves_bounded_partial_output(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            timeout = subprocess.TimeoutExpired([], 21, output=b"x" * 5000, stderr=b"deadline reached\xff")
+            with self.measurement(output, results=[timeout]), self.assertRaises(subprocess.TimeoutExpired):
+                measure_steps.main()
+            report = self.report(output)
+            self.assertFalse(report["complete"])
+            failure = report["attempts"][0]
+            self.assertEqual(failure["errorType"], "TimeoutExpired")
+            self.assertEqual(failure["stdout"], "x" * 4000)
+            self.assertEqual(failure["stderr"], "deadline reached\ufffd")
+
+    def test_same_pid_with_new_start_time_during_step_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            with self.measurement(output, processes=[self.process(), self.process(cpuSeconds=3, startTicks=501)]), \
+                    self.assertRaisesRegex(RuntimeError, "identity during"):
+                measure_steps.main()
+            report = self.report(output)
+            self.assertFalse(report["complete"])
+            self.assertEqual(report["samples"], [])
+            self.assertEqual(report["attempts"][0]["stage"], "process-after")
+
+    def test_same_pid_with_new_start_time_between_steps_never_runs_again(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            processes = [self.process(), self.process(cpuSeconds=3), self.process(startTicks=501)]
+            with self.measurement(output, samples=2, processes=processes) as run, \
+                    self.assertRaisesRegex(RuntimeError, "identity before"):
+                measure_steps.main()
+            self.assertEqual(run.call_count, 1)
+            report = self.report(output)
+            self.assertEqual(len(report["samples"]), 1)
+            self.assertEqual(report["attempts"][1]["stage"], "process-before")
+
+    def test_invalid_native_progress_never_becomes_a_speedup(self):
+        for advanced in (0, -1, True, float("nan"), float("inf"), -float("inf"), "1", None):
+            with self.subTest(advanced=advanced), tempfile.TemporaryDirectory() as temp:
+                output = Path(temp)
+                with self.measurement(output, results=[self.step(advanced)]), \
+                        self.assertRaisesRegex(RuntimeError, "simulationSecondsAdvanced"):
+                    measure_steps.main()
+                report = self.report(output)
+                self.assertFalse(report["complete"])
+                self.assertEqual(report["samples"], [])
+                self.assertNotIn("summary", report)
+
+    def test_invalid_or_decreasing_process_metrics_are_rejected(self):
+        for name, value in (("cpuSeconds", 1), ("cpuSeconds", float("inf")),
+                            ("cpuSeconds", float("nan")), ("cpuSeconds", True),
+                            ("majorFaults", -1), ("rssKiB", -1), ("swapKiB", float("inf"))):
+            with self.subTest(metric=name, value=value), tempfile.TemporaryDirectory() as temp:
+                output = Path(temp)
+                after = self.process(cpuSeconds=3)
+                after[name] = value
+                with self.measurement(output, processes=[self.process(), after]), self.assertRaises(RuntimeError):
+                    measure_steps.main()
+                report = self.report(output)
+                self.assertFalse(report["complete"])
+                self.assertEqual(report["samples"], [])
+
+    def test_frame_counter_decrease_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            statuses = [self.status(), self.status(), self.status(frameCount=99)]
+            with self.measurement(output, statuses=statuses), self.assertRaisesRegex(RuntimeError, "updateFrames delta"):
+                measure_steps.main()
+            self.assertEqual(self.report(output)["samples"], [])
+
+    def test_nonfinite_or_negative_step_timings_are_rejected(self):
+        for value in (float("inf"), float("nan"), True, -1):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as temp:
+                output = Path(temp)
+                with self.measurement(output, results=[self.step(timings={"runningWallSeconds": value})]), \
+                        self.assertRaisesRegex(RuntimeError, "stepTimings.runningWallSeconds"):
+                    measure_steps.main()
+                self.assertFalse(self.report(output)["complete"])
+
+    def test_invalid_wall_duration_or_negative_control_overhead_is_rejected(self):
+        for value in (float("nan"), float("inf"), -1, .5):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as temp:
+                output = Path(temp)
+                with self.measurement(output, clock=[0, value]), self.assertRaises(RuntimeError):
+                    measure_steps.main()
+                self.assertFalse(self.report(output)["complete"])
+
+    def test_final_pause_and_process_are_required_before_acceptance(self):
+        for final in (self.status(paused=False), self.status(pid=43), self.status(gameLoaded=False)):
+            with self.subTest(final=final), tempfile.TemporaryDirectory() as temp:
+                output = Path(temp)
+                with self.measurement(output, statuses=[self.status(), self.status(), final]), \
+                        self.assertRaisesRegex(RuntimeError, "native work and pause"):
+                    measure_steps.main()
+                report = self.report(output)
+                self.assertFalse(report["complete"])
+                self.assertEqual(report["samples"], [])
+                self.assertEqual(report["attempts"][0]["stage"], "final-status")
+
+    @staticmethod
+    def stat(start=500, state="S"):
+        fields = ["0"] * 25
+        fields[0], fields[9], fields[11], fields[12], fields[19] = state, "2", "200", "100", str(start)
+        return "42 (game (worker)) " + " ".join(fields)
+
+    def test_proc_sample_records_identity_and_handles_parentheses_in_comm(self):
+        with patch.object(Path, "read_text", side_effect=[self.stat(), "VmRSS: 100 kB\nVmSwap: 20 kB", self.stat()]), \
+                patch("measure_steps.os.sysconf", return_value=100, create=True):
+            sample = measure_steps.process_sample(42)
+        self.assertEqual(sample, {"startTicks": 500, "cpuSeconds": 3.0, "majorFaults": 2,
+                                  "rssKiB": 100, "swapKiB": 20})
+
+    def test_proc_sample_rejects_exited_or_reused_identity(self):
+        for reads in ([self.stat(state="Z")],
+                      [self.stat(), "VmRSS: 100 kB", self.stat(state="Z")],
+                      [self.stat(), "VmRSS: 100 kB", self.stat(start=501)]):
+            with self.subTest(reads=reads), patch.object(Path, "read_text", side_effect=reads), \
+                    patch("measure_steps.os.sysconf", return_value=100, create=True), \
+                    self.assertRaisesRegex(RuntimeError, "process exited"):
+                measure_steps.process_sample(42)
 
 
 if __name__ == "__main__":
