@@ -257,7 +257,7 @@ class MeasurementTests(unittest.TestCase):
         # A report must be standard JSON even when rejecting non-finite input.
         def reject_constant(value):
             raise AssertionError("Non-finite number in evidence: " + value)
-        return json.loads((output / "step-benchmark-candidate.json").read_text(), parse_constant=reject_constant)
+        return json.loads((output / "step-benchmark-candidate.json").read_text(encoding="utf-8"), parse_constant=reject_constant)
 
     def test_existing_evidence_is_preserved_before_any_step(self):
         with tempfile.TemporaryDirectory() as temp:
