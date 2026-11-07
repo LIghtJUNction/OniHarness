@@ -1,102 +1,147 @@
 ---
 name: oni-harness
-description: Test ONI mods with game-free native fixtures or Steam-launched headless gameplay without a window or graphics device, plus an optional AI text-map spectator. Use for headless tests, real colony smoke steps, rendering checks and shared AI observations.
+description: Test ONI mods with game-free native fixtures or Steam-launched headless gameplay without a window or graphics device, plus arbitrary geometry, building placement, communicating vessels physics, telemetry data collection, and mod testing.
 ---
 
-# OniHarness
+# OniHarness 测试技能
 
-Choose the runtime explicitly. Native fixtures never launch ONI, Steam or Unity
-as a fallback. When the user authorizes running the game, use the real-game route
-below. Never substitute a made-up simulation result or equate fixture behavior
-with full-game compatibility.
+OniHarness 提供双重测试路线：
+1. **独立原生物理仿真 (Game-Free Native Simulation)**：直接调用游戏底层 `libSim.so`，无需启动游戏或 Unity，测试任意几何地图、建筑物理映射、流体与热交换、数据采集；
+2. **真实游戏无头运行 (Headless Game Runtime)**：通过 Steam 启动真实游戏（`-batchmode -nographics`），测试完整游戏生命周期与 Mod 集成。
 
-## Real-game route
+---
 
-For headless gameplay or watching AI text maps, read `docs/runtime.md`.
-It describes `scripts/install_runtime.py` and explicit `scripts/runtime.py`
-commands. Start the actual game through Steam only. Verify a fresh companion
-status with `batchMode=true`, `graphicsDevice=Null`, `headless=true` and zero
-camera renders; `launch` now selects this mode by default. A hidden/minimized
-window or reduced drawing does not pass. Never fall back to a graphical launch
-when headless fails. `--graphics normal|reduced` explicitly requests graphics.
-Engine readiness is separate from loading and actually stepping a colony. Verify
-status, exact save/mod combination and paused loaded state. Use a disposable
-save copy and short guarded steps. Do not spawn resources or duplicants.
+## 核心工作流与命令速查
 
-Use `observe --view text` to show the exact paused map returned to the AI, or
-`--view none` to record without displaying a terminal map. `serve` is an optional
-read-only spectator of those same files. It does not poll or control the game.
-The game-control skill's pause/observe/act/short-step/pause/verify rules and
-authoritative glyph lookup still apply when interpreting glyphs or playing.
-On the tested seven-tool core surface, use the documented `world_editor`
-`command=symbols` compatibility entry for runtime glyph queries when
-`search_control` is absent. The generated runtime result is authoritative;
-do not infer a meaning from a glyph or an old legend.
+所有命令统一在 `tools/OniHarness` 根目录下运行（或通过环境配置 `ONIHARNESS_GAME_PATH`）。
 
-Measure normal versus reduced mode in the same process/workload; a changed
-config or launch flag is not proof of savings. Keep normal/reduced/no-graphics
-results separate. Do not call untested features fully compatible. Logs, save
-paths and full observations remain private local artifacts unless sanitized.
+### 1. 连通器与物理实验 (Communicating Vessels & Physics Playground)
 
-For an optimization iteration, use `scripts/measure_steps.py` on a paused
-disposable save, then inspect the mod's opt-in hotspot probe. Compare actual
-native progress, CPU per native second, control-phase timings, RSS/swap and major
-faults. Hold save/mods/speed/update cap fixed, warm up, repeat, and retain failed
-samples. Paging or host-load differences prevent a confident speedup claim.
-Shorter control waits are distinct from faster game simulation. See runtime.md
-for `--game-arg=--cycletrim-perf-probe`; never enable profiling by default.
+- **连通器实验与可视化数据看板生成**：
+  ```sh
+  python3 scripts/u_tube_experiment.py --game-path /path/to/OxygenNotIncluded
+  ```
+  自动运行连通器双室流体平衡测试，并将每步时序数据导出为 CSV/JSON，生成动态 HTML 报告：`artifacts/u-tube-experiment/index.html`。
 
-## Locate and inspect
+- **连通器声明式 JSON 场景测试**：
+  ```sh
+  dotnet run --project src/OniHarness.Cli -c Release --no-build -- \
+    test examples/scenarios/u-tube-communicating-vessels.json --game-path /path/to/OxygenNotIncluded
+  ```
 
-Find the checkout in the current OniHarness repository, `tools/OniHarness` in
-OniMods, or a caller-provided location. An installed skill alone does not contain
-the framework. Read that checkout's `docs/capabilities.md` and `AGENTS.md`.
+- **物理操场落水与加热实验**：
+  ```sh
+  python3 scripts/physics_playground.py --game-path /path/to/OxygenNotIncluded \
+    --output artifacts/physics-playground --repeat 2
+  ```
 
-For native fixture runs, use `ONIHARNESS_GAME_PATH` or an explicitly provided local game path. When missing,
-check the usual local Steam ONI installation directories before asking. Do not
-download game files or scan the whole home directory. Run `doctor` to verify the
-installed fingerprints; unsupported versions are a reported blocker, not a reason
-to relax the adapter check.
+---
 
-All commands below run from the OniHarness checkout. Prefix commands with a
-workspace-required wrapper such as RTK when applicable.
+### 2. 安装 Mod 后测试 Mod (Mod Testing)
+
+使用统一的 Mod 测试工具 `scripts/test_mod.py`：
 
 ```sh
-dotnet run --project src/OniHarness.Cli -c Release -- doctor --game-path /path/to/ONI
+# 自动编译 Mod，加载测试用例并验证托管逻辑
+python3 scripts/test_mod.py --mod /path/to/MyMod \
+  --assembly /path/to/MyMod.Tests.dll \
+  --game-path /path/to/OxygenNotIncluded \
+  --report artifacts/mod-test-report.json
+
+# 结合无头模式进行真实游戏环境验证
+python3 scripts/test_mod.py --mod /path/to/MyMod \
+  --headless --game-path /path/to/OxygenNotIncluded
 ```
 
-## Choose the smallest useful run
+在 C# 测试用例中动态加载 Mod 程序集：
+```csharp
+[HarnessTest]
+public static void TestMyModLogic(HarnessContext context)
+{
+    var assembly = context.LoadModAssembly("/path/to/MyMod.dll");
+    var targetType = assembly.GetType("MyMod.CustomBuildingConfig");
+    Check.That(targetType != null, "Building config not found in mod.");
+}
+```
 
-- Framework regression: `python3 scripts/verify.py` (no game needed).
-- Real-library regression: `python3 scripts/verify.py --game-path /path/to/ONI`.
-- One scenario: CLI `test examples/scenarios/sealed-gas.json --game-path /path/to/ONI --repeat 3 --report artifacts/results.json`.
-- C# mod logic: CLI `test --assembly /path/to/MyMod.Tests.dll --game-path /path/to/ONI --filter TEXT`.
-- Observe/action/step experiment with recorded states:
+---
+
+### 3. 任意形状地图与建筑物理模拟 (Arbitrary Shapes & Buildings)
+
+在场景定义（JSON 或 C# `Scenario`）中支持多种复杂几何与建筑放置：
+
+- **多边形区域 (`polygonRegions`)**：通过顶点坐标序列定义任意斜坡、多边形容器，底层内置光栅化检测：
+  ```json
+  "polygonRegions": [
+    {
+      "vertices": [ {"x": 4, "y": 2}, {"x": 20, "y": 2}, {"x": 18, "y": 5}, {"x": 6, "y": 5} ],
+      "cell": { "element": "Granite", "mass": 1000, "temperature": 300 }
+    }
+  ]
+  ```
+- **离散点集区域 (`pointsRegions`)**：快速指定非连续障碍物点集：
+  ```json
+  "pointsRegions": [
+    {
+      "points": [ {"x": 10, "y": 6}, {"x": 12, "y": 6} ],
+      "cell": { "element": "Granite", "mass": 1000, "temperature": 300 }
+    }
+  ]
+  ```
+- **ASCII 地图矩阵 (`asciiMap` & `legend`)**：直接用多行字符绘制二维网格拓扑。
+- **建筑映射 (`buildings`)**：支持声明 `Tile`、`InsulatedTile`、`MeshTile`、`ManualPressureDoor` 等建筑，自动映射为底层物理阻隔与导热属性：
+  ```json
+  "buildings": [
+    { "buildingDef": "InsulatedTile", "x": 6, "y": 4, "element": "Granite", "mass": 400, "temperature": 300 }
+  ]
+  ```
+
+---
+
+### 4. 数据采集与时序遥测 (SimulationDataCollector)
+
+在 C# 物理测试中记录精细的时序数据：
+```csharp
+var collector = new SimulationDataCollector(scenario);
+collector.AddProbe("LeftTubeBottom", 8, 4);       // 记录指定坐标的质量与温度
+collector.MonitorColumn("LeftWaterLevel", 8);      // 记录指定列的最高液体高度
+collector.MonitorRegion("LeftVessel", 6, 4, 5, 12); // 记录区域液体质量
+
+for (int step = 0; step < 100; step += 5)
+{
+    world.Step(5);
+    collector.Record(world.StepsCompleted, world.Snapshot());
+}
+
+// 导出 CSV 和 JSON 数据文件
+collector.SaveCsv("artifacts/telemetry.csv");
+collector.SaveJson("artifacts/telemetry.json");
+```
+
+---
+
+### 5. 框架自身验证回归
 
 ```sh
-python3 scripts/physics_playground.py --game-path /path/to/ONI \
-  --output artifacts/physics-playground --repeat 2
+# 框架无游戏依赖自检（13 项行为检查）
+dotnet run --project tests/OniHarness.Tests -c Release --no-build
+
+# Python 库单元测试（41 项检查）
+PYTHONPATH=python/src .venv-runtime/bin/python -m unittest discover -s python/tests
+
+# 运行全部内置场景测试
+dotnet run --project src/OniHarness.Cli -c Release --no-build -- \
+  test examples/scenarios --game-path /path/to/OxygenNotIncluded
 ```
 
-The playground uses the normal isolated test worker. It records falling water,
-removes three partition cells, observes water crossing into another chamber,
-then adds energy to a measured water cell. Its HTML viewer is a local data
-replay, not a game screenshot or live colony UI. `--gif` additionally produces a
-GIF when Pillow is already available; do not install optional dependencies
-without a concrete need.
+---
 
-For a new experiment, start with a bounded fixture and explicit checks. Read the
-core API or example only as needed. `SetCell` and `AddEnergy` queue changes; call
-`Step` before observing effects. Keep one world per worker and use it on its
-creating thread. Geometry edits can intentionally change total mass: distinguish
-that from unintended water loss. Inspect selected cells before changing them.
+## 实验结果判定原则
 
-## Judge the observed result
-
-Check exit status, test status, adapter/hash, completed steps and actual measured
-state. A clean process exit, a generated picture or a metadata contract is not a
-physics success. Empty selections, crashes, timeouts, unsupported profiles and
-failed assertions remain failures. Preserve failed traces for diagnosis.
+- 过程退出码为 0 且生成的测试报告 `status == "passed"`。
+- 物理测试验证总质量守恒（`massConserved` 绝对容差 $\le 0.5\text{ kg}$）。
+- 连通器实验验证双室自由液面齐平（`communicatingVesselsEquilibrium` 误差 $\le 1$ 格）。
+- 遥测数据应包含平滑单调的质量转移时序，保留证据闭环文件（CSV/JSON）。
 
 For repeat runs compare state fingerprints, not image timestamps or wall time.
 Report native-solver evidence separately from .NET-host method execution and

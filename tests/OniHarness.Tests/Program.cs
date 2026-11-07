@@ -58,6 +58,37 @@ try
         Reject(() => new Expectation { Kind = "cellTemperature", Max = 350 }.Verify(initial, final));
         Reject(() => new Snapshot(1, 1, [0], [float.NaN], [300]).ValidateFinite());
         Check.That(initial.Fingerprint() != final.Fingerprint(), "Changed states have the same fingerprint.");
+
+        // Test Communicating Vessels Equilibrium Assertion
+        var vesselsInit = new Snapshot(3, 3, [0, 0, 0, 0, 0, 0, 0, 0, 0], [10, 0, 10, 10, 0, 10, 0, 0, 0], [300, 300, 300, 300, 300, 300, 300, 300, 300]);
+        var vesselsBalanced = new Snapshot(3, 3, [0, 0, 0, 0, 0, 0, 0, 0, 0], [5, 0, 5, 5, 0, 5, 0, 0, 0], [300, 300, 300, 300, 300, 300, 300, 300, 300]);
+        new Expectation { Kind = "communicatingVesselsEquilibrium", X = 0, X2 = 2, AbsoluteTolerance = 1.0 }.Verify(vesselsInit, vesselsBalanced);
+        return Task.CompletedTask;
+    });
+    await Test("custom geometry, buildings and telemetry data collection", () =>
+    {
+        var scenario = new Scenario
+        {
+            Name = "Geometry and telemetry test",
+            Width = 16,
+            Height = 16,
+            Buildings = [new() { BuildingDef = "Tile", X = 5, Y = 5, Element = "Granite", Mass = 500 }],
+            PointsRegions = [new() { Points = [new(3, 3), new(4, 4)], Cell = new() { Element = "Granite" } }],
+            PolygonRegions = [new() { Vertices = [new(1, 1), new(3, 1), new(2, 3)], Cell = new() { Element = "Granite" } }]
+        };
+        scenario.Validate();
+
+        var collector = new SimulationDataCollector(scenario);
+        collector.AddProbe("Center", 8, 8);
+        collector.MonitorColumn("Col8", 8);
+        collector.MonitorRegion("Box", 2, 2, 4, 4);
+
+        var snap = new Snapshot(16, 16, new ushort[256], Enumerable.Repeat(100f, 256).ToArray(), Enumerable.Repeat(300f, 256).ToArray());
+        var sample = collector.Record(0, snap);
+        Check.That(sample.TotalMass == 25600, "Collector miscalculated total mass.");
+        string csv = collector.ToCsv();
+        Check.That(csv.Contains("Step,TimeSeconds,TotalMass"), "CSV missing standard headers.");
+        Check.That(csv.Contains("Mass_Center"), "CSV missing probe headers.");
         return Task.CompletedTask;
     });
     await Test("metadata discovery never executes module initializers", () =>
