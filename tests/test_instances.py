@@ -435,6 +435,7 @@ class ControllerTests(unittest.TestCase):
              patch.object(control, "game_processes", return_value={}), \
              patch.object(self.controller, "preflight"), \
              patch.object(self.controller, "ensure_launcher", return_value={"pid": 555}), \
+             patch.object(self.controller, "launch_command", return_value=["steam", "-applaunch", "457140"]), \
              patch.object(self.controller, "launcher_command", return_value={"pid": 999}), \
              patch.object(control.ProcessIdentity, "capture", side_effect=lambda pid: control.ProcessIdentity(pid, 20)), \
              patch.object(self.controller, "observe_native_pid"), \
