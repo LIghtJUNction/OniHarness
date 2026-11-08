@@ -22,10 +22,10 @@ def main():
     run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_runtime.py")
     if sys.platform.startswith("linux"):
         run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_instance*.py")
+        run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_installation_views.py")
+        run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_steam_launch_options.py")
     else:
-        print("NOT RUN: experimental isolated Steam instance controller tests require Linux.")
-    run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_installation_views.py")
-    run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_steam_launch_options.py")
+        print("NOT RUN: experimental isolated Steam instance controller and native installation tests require Linux.")
     cli = ["dotnet", "run", "--project", "src/OniHarness.Cli", "-c", "Release", "--no-build", "--"]
     run(*cli, "test", "--assembly", "examples/ModTests/bin/Release/net10.0/ModTests.dll", "--filter", "PolicyCanRunWithoutGameFiles")
     for project in ("Core", "Cli"):
