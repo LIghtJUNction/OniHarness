@@ -69,7 +69,7 @@ def main():
     if entry is None and any(m.get("label", {}).get("id") == "OniHarness.Runtime" for m in entries):
         raise RuntimeError("Mod id already belongs to a different staticID; manifest left untouched")
     folder = args.mods_dir / "Local" / "OniHarness.Runtime"
-    if folder.exists() and any(p.name not in {"OniHarness.Runtime.dll", "mod.yaml", "mod_info.yaml"} for p in folder.iterdir()):
+    if folder.exists() and any(p.name not in {"OniHarness.Runtime.dll", "mod.yaml", "mod_info.yaml", "LICENSE", "LICENSING.md", "THIRD_PARTY_NOTICES.txt"} for p in folder.iterdir()):
         raise RuntimeError("Existing companion directory has unknown files; preserve it and inspect first")
     subprocess.run(["dotnet", "build", "runtime/OniHarness.Runtime", "-c", "Release",
                     "-p:OniGamePath=" + str(args.game_path.resolve()), "--nologo"], cwd=ROOT, check=True)
