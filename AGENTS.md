@@ -18,5 +18,8 @@ confirmed external upstream defects; preserve third-party terms and secrets.
 - Unknown native adapters fail explicitly. Do not advance hashes without protocol review and local verification.
 - Keep native simulation, .NET host execution, static metadata and actual gameplay evidence distinct.
 - Discovery must not execute test assemblies. Preserve timeout, crash and empty-selection failures.
-- Run `python3 scripts/verify.py`; add `--game-path PATH` for authorized real-library checks.
+- Follow `README.md#verification`: create `.venv-runtime`, install
+  `scripts/requirements-runtime.txt` with that environment's Python and `--require-hashes`,
+  then run `scripts/verify.py` with the same interpreter. Add `--game-path PATH` only
+  for authorized real-library checks. Never install verification dependencies into system Python.
 - Run `git diff --check` and package verification before publishing. Preserve unrelated working-tree changes.

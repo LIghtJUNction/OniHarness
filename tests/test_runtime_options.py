@@ -77,6 +77,10 @@ namespace UnityEngine.Rendering {
 namespace UnityEngine {
     public class Object {
         public static int PersistentObjects;
+        private static int NextInstanceId;
+        private readonly int instanceId = ++NextInstanceId;
+        public string name = "fixture";
+        public int GetInstanceID() => instanceId;
         public static void DontDestroyOnLoad(object value) { PersistentObjects++; }
     }
     public class MonoBehaviour : Object {}
@@ -96,9 +100,13 @@ namespace UnityEngine {
         public static Rendering.GraphicsDeviceType graphicsDeviceType = Rendering.GraphicsDeviceType.OpenGLCore;
     }
     public static class QualitySettings { public static int vSyncCount = 2; }
-    public class Camera {
+    public class RenderTexture : Object {}
+    public class Camera : Object {
         public static event Action<Camera> onPostRender;
         public static int Listeners => onPostRender?.GetInvocationList().Length ?? 0;
+        public int pixelWidth = 1280;
+        public int pixelHeight = 720;
+        public RenderTexture targetTexture;
         public static void Emit() => onPostRender?.Invoke(new Camera());
     }
     public static class Time {

@@ -88,7 +88,11 @@ def prepare(command, environment, apply_affinity=True):
     if not steam_ancestor():
         raise RuntimeError("This wrapper must be invoked by the existing authorized Steam client")
     if "--oniharness-instance" not in command:
-        return dict(environment), None
+        env = dict(environment)
+        env["__GL_SYNC_TO_VBLANK"] = "0"
+        env["vblank_mode"] = "0"
+        env["CYCLETRIM_GPU_PROFILE"] = "1"
+        return env, None
     root = Path(argument(command, "--oniharness-control")).resolve(strict=True)
     profile = json.loads((root / "instance-profile.json").read_text())
     identity = argument(command, "--oniharness-instance")

@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "name": "U-Tube Communicating Vessels Fluid Equilibrium",
+  "width": 24,
+  "height": 24,
+  "steps": 100,
+  "secondsPerStep": 0.2,
+  "fill": {
+    "element": "Vacuum",
+    "mass": 0,
+    "temperature": 300
+  },
+  "boundary": {
+    "element": "Unobtanium",
+    "mass": 20000,
+    "temperature": 300
+  },
+  "buildings": [
+    {
+      "buildingDef": "InsulatedTile",
+      "x": 6,
+      "y": 3,
+      "element": "Granite",
+      "temperature": 300,
+      "mass": 400
+    },
+    {
+      "buildingDef": "InsulatedTile",
+      "x": 17,
+      "y": 3,
+      "element": "Granite",
+      "temperature": 300,
+      "mass": 400
+    }
+  ],
+  "polygonRegions": [
+    {
+      "vertices": [
+        { "x": 6, "y": 2 },
+        { "x": 18, "y": 2 },
+        { "x": 17, "y": 4 },
+        { "x": 7, "y": 4 }
+      ],
+      "cell": {
+        "element": "Granite",
+        "mass": 1000,
+        "temperature": 300
+      }
+    }
+  ],
+  "pointsRegions": [
+    {
+      "points": [
+        { "x": 11, "y": 5 },
+        { "x": 12, "y": 5 }
+      ],
+      "cell": {
+        "element": "Granite",
+        "mass": 1000,
+        "temperature": 300
+      }
+    }
+  ],
+  "regions": [
+    {
+      "x": 6,
+      "y": 4,
+      "width": 2,
+      "height": 16,
+      "cell": {
+        "element": "Granite",
+        "mass": 1000,
+        "temperature": 300
+      }
+    },
+    {
+      "x": 16,
+      "y": 4,
+      "width": 2,
+      "height": 16,
+      "cell": {
+        "element": "Granite",
+        "mass": 1000,
+        "temperature": 300
+      }
+    },
+    {
+      "x": 11,
+      "y": 7,
+      "width": 2,
+      "height": 13,
+      "cell": {
+        "element": "Granite",
+        "mass": 1000,
+        "temperature": 300
+      }
+    },
+    {
+      "x": 8,
+      "y": 4,
+      "width": 3,
+      "height": 12,
+      "cell": {
+        "element": "Water",
+        "mass": 1000,
+        "temperature": 300
+      }
+    }
+  ],
+  "assertions": [
+    {
+      "kind": "massConserved",
+      "absoluteTolerance": 0.5
+    },
+    {
+      "kind": "regionMass",
+      "x": 8,
+      "y": 4,
+      "width": 8,
+      "height": 15,
+      "min": 10000,
+      "max": 80000
+    }
+  ]
+}

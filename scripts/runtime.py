@@ -20,6 +20,19 @@ from runtime_mcp import Client, atomic_json
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def retire_owned_lease(directory, lease_id):
+    """Remove this completed run's lease without deleting a different controller's lease."""
+    path = Path(directory) / "run-lease.json"
+    try:
+        lease = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return False
+    if lease.get("Id") != lease_id:
+        return False
+    path.unlink()
+    return True
+
+
 def validate_headless(status):
     if (status.get("batchMode") is not True or status.get("graphicsDevice") != "Null" or
             status.get("headless") is not True or status.get("headlessRequested") is not True or
@@ -251,6 +264,10 @@ def main():
         finally:
             pause_requested = time.monotonic()
             client.call("game_control", {"domain": "speed", "action": "pause"})
+            # Retire even when the run failed, but only after the game confirms
+            # it is paused. If confirmation fails, keep the deadline armed.
+            if client.call("game_control", {"domain": "speed", "action": "time"}).get("isPaused") is True:
+                retire_owned_lease(args.output, lease_id)
         after = client.call("game_control", {"domain": "speed", "action": "time"})
         if after.get("isPaused") is not True:
             raise RuntimeError("Pause after smoke step was not verified")
@@ -262,6 +279,9 @@ def main():
             time.sleep(.1)
         else:
             raise RuntimeError("No fresh paused telemetry after step")
+        # A successful bounded step is already paused; retaining its deadline
+        # would repeatedly force-pause any subsequent manual resume.
+        retire_owned_lease(args.output, lease_id)
         advanced = final_status["simulationSeconds"] - status["simulationSeconds"]
         if advanced <= 0:
             raise RuntimeError("Game clock did not advance; smoke step failed")

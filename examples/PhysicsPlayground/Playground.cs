@@ -8,7 +8,7 @@ public static class Playground
     public static void FallingWaterGateAndHeat(HarnessContext context)
     {
         string output = Environment.GetEnvironmentVariable("ONIHARNESS_PLAYGROUND_OUTPUT")
-            ?? throw new InvalidOperationException("Run scripts/physics_playground.py to choose an output directory.");
+            ?? Path.Combine(AppContext.BaseDirectory, "../../../../artifacts/physics-playground");
         Check.That(int.TryParse(Environment.GetEnvironmentVariable("ONIHARNESS_PLAYGROUND_PHASE_LIMIT") ?? "5000", out int phaseLimit)
             && phaseLimit is >= 20 and <= 5000 && phaseLimit % 20 == 0, "Phase limit must be a multiple of 20, between 20 and 5000.");
         var scenario = new Scenario

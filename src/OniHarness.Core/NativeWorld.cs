@@ -207,6 +207,70 @@ public sealed class NativeWorld : IDisposable
         foreach (var region in s.Regions)
             for (int y = region.Y; y < region.Y + region.Height; y++)
                 for (int x = region.X; x < region.X + region.Width; x++) cells[y * s.Width + x] = region.Cell;
+
+        foreach (var poly in s.PolygonRegions)
+        {
+            int minX = poly.Vertices.Min(v => v.X);
+            int maxX = poly.Vertices.Max(v => v.X);
+            int minY = poly.Vertices.Min(v => v.Y);
+            int maxY = poly.Vertices.Max(v => v.Y);
+            for (int y = minY; y <= maxY && y < s.Height; y++)
+            {
+                if (y < 0) continue;
+                for (int x = minX; x <= maxX && x < s.Width; x++)
+                {
+                    if (x < 0) continue;
+                    if (PolygonRegion.ContainsPoint(poly.Vertices, x, y))
+                    {
+                        cells[y * s.Width + x] = poly.Cell;
+                    }
+                }
+            }
+        }
+
+        foreach (var points in s.PointsRegions)
+        {
+            foreach (var pt in points.Points)
+            {
+                if (pt.X >= 0 && pt.X < s.Width && pt.Y >= 0 && pt.Y < s.Height)
+                    cells[pt.Y * s.Width + pt.X] = points.Cell;
+            }
+        }
+
+        if (s.AsciiMap.Length > 0)
+        {
+            int rCount = s.AsciiMap.Length;
+            for (int r = 0; r < rCount; r++)
+            {
+                int y = s.AsciiOriginY + (rCount - 1 - r);
+                if (y < 0 || y >= s.Height) continue;
+                string row = s.AsciiMap[r];
+                for (int c = 0; c < row.Length; c++)
+                {
+                    int x = s.AsciiOriginX + c;
+                    if (x < 0 || x >= s.Width) continue;
+                    string key = row[c].ToString();
+                    if (s.Legend.TryGetValue(key, out var cell))
+                    {
+                        cells[y * s.Width + x] = cell;
+                    }
+                }
+            }
+        }
+
+        foreach (var b in s.Buildings)
+        {
+            if (b.BuildingDef is "ManualPressureDoor" or "PressureDoor")
+            {
+                cells[b.Y * s.Width + b.X] = b.IsOpen
+                    ? new CellInput { Element = "Vacuum", Mass = 0, Temperature = b.Temperature }
+                    : new CellInput { Element = b.Element, Mass = b.Mass, Temperature = b.Temperature };
+            }
+            else
+            {
+                cells[b.Y * s.Width + b.X] = new CellInput { Element = b.Element, Mass = b.Mass, Temperature = b.Temperature };
+            }
+        }
         foreach (var cell in cells)
         {
             w.Write(s.ElementIndex(cell.Element)); w.Write((byte)0); w.Write((byte)255); w.Write(new byte[4]);

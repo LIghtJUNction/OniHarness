@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
 using HarmonyLib;
 using KMod;
 using Newtonsoft.Json;
@@ -103,6 +104,7 @@ namespace OniHarness.Runtime
         private int cameraRenderCallbacks;
         private int cameraRenderFrames;
         private int lastCameraFrame = -1;
+        private readonly HashSet<int> observedCameras = new HashSet<int>();
         private int pid;
         private bool headlessRequested;
         private bool headless;
@@ -132,6 +134,11 @@ namespace OniHarness.Runtime
         private void RecordCameraRender(Camera camera)
         {
             cameraRenderCallbacks++;
+            if (camera != null && observedCameras.Count < 64 && observedCameras.Add(camera.GetInstanceID()))
+            {
+                Debug.Log("[OniHarness] Camera render: name=" + camera.name + " size=" + camera.pixelWidth + "x" + camera.pixelHeight +
+                    " target=" + (camera.targetTexture == null ? "screen" : camera.targetTexture.name));
+            }
             if (lastCameraFrame == Time.frameCount) return;
             lastCameraFrame = Time.frameCount;
             cameraRenderFrames++;
@@ -171,11 +178,20 @@ namespace OniHarness.Runtime
                     throw new InvalidDataException("Mode must be normal/reduced/headless, interval 1..120 and update rate 15..240.");
                 if ((headlessRequested || settings.Mode == "headless") && !headless)
                     throw new InvalidDataException("Headless requires batch mode and a Null graphics device; no graphical fallback.");
+                string previousMode = mode;
                 mode = headless ? "headless" : settings.Mode;
                 updateRate = settings.UpdateRate;
                 OnDemandRendering.renderFrameInterval = headless ? 1 : mode == "normal" ? originalInterval : settings.Interval;
-                QualitySettings.vSyncCount = mode == "normal" ? originalVSync : 0;
-                Application.targetFrameRate = mode == "normal" ? originalTargetRate : updateRate;
+                if (mode != "normal")
+                {
+                    QualitySettings.vSyncCount = 0;
+                    Application.targetFrameRate = updateRate;
+                }
+                else if (previousMode != "normal")
+                {
+                    QualitySettings.vSyncCount = originalVSync;
+                    Application.targetFrameRate = originalTargetRate;
+                }
                 error = null;
             }
             catch (Exception ex)

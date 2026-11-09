@@ -12,7 +12,7 @@ import io
 from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from runtime import observe, main, read_status, validate_headless, wait_ready
+from runtime import observe, main, read_status, retire_owned_lease, validate_headless, wait_ready
 from runtime_mcp import Client, decode_text, payload
 from install_runtime import enable_entry, require_idle_mod_loader, restore_mod_loader_state
 from measure_steps import require_log_markers
@@ -65,6 +65,17 @@ class RuntimeTests(unittest.TestCase):
                     install_runtime.main()
                 build.assert_not_called()
             self.assertEqual((folder / "unique-state.json").read_text(), "preserve")
+
+    def test_completed_step_retires_only_its_own_lease(self):
+        with tempfile.TemporaryDirectory() as temp:
+            lease = Path(temp) / "run-lease.json"
+            self.assertFalse(retire_owned_lease(temp, "mine"))
+            lease.write_text(json.dumps({"Id": "other"}))
+            self.assertFalse(retire_owned_lease(temp, "mine"))
+            self.assertTrue(lease.exists())
+            lease.write_text(json.dumps({"Id": "mine"}))
+            self.assertTrue(retire_owned_lease(temp, "mine"))
+            self.assertFalse(lease.exists())
 
     def test_interrupted_mod_loader_is_rejected_and_owned_baseline_restores_only_its_flag(self):
         before = {"mod_load_in_progress": False}

@@ -54,6 +54,15 @@ public sealed record CellInput
     public float Temperature { get; init; } = 300;
 }
 
+public sealed record Point2D
+{
+    public int X { get; init; }
+    public int Y { get; init; }
+
+    public Point2D() { }
+    public Point2D(int x, int y) { X = x; Y = y; }
+}
+
 public sealed record Region
 {
     public int X { get; init; }
@@ -61,6 +70,44 @@ public sealed record Region
     public int Width { get; init; } = 1;
     public int Height { get; init; } = 1;
     public CellInput Cell { get; init; } = new();
+}
+
+public sealed record PointsRegion
+{
+    public Point2D[] Points { get; init; } = [];
+    public CellInput Cell { get; init; } = new();
+}
+
+public sealed record PolygonRegion
+{
+    public Point2D[] Vertices { get; init; } = [];
+    public CellInput Cell { get; init; } = new();
+
+    public static bool ContainsPoint(Point2D[] vertices, int x, int y)
+    {
+        if (vertices.Length < 3) return false;
+        bool inside = false;
+        for (int i = 0, j = vertices.Length - 1; i < vertices.Length; j = i++)
+        {
+            double xi = vertices[i].X, yi = vertices[i].Y;
+            double xj = vertices[j].X, yj = vertices[j].Y;
+            bool intersect = ((yi > y) != (yj > y)) &&
+                (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+}
+
+public sealed record BuildingPlacement
+{
+    public required string BuildingDef { get; init; }
+    public int X { get; init; }
+    public int Y { get; init; }
+    public string Element { get; init; } = "Granite";
+    public float Temperature { get; init; } = 300f;
+    public float Mass { get; init; } = 200f;
+    public bool IsOpen { get; init; } = false;
 }
 
 public sealed record Scenario
@@ -76,6 +123,13 @@ public sealed record Scenario
     public CellInput Fill { get; init; } = new();
     public CellInput Boundary { get; init; } = new() { Element = "Unobtanium", Mass = 20000 };
     public Region[] Regions { get; init; } = [];
+    public PointsRegion[] PointsRegions { get; init; } = [];
+    public PolygonRegion[] PolygonRegions { get; init; } = [];
+    public string[] AsciiMap { get; init; } = [];
+    public Dictionary<string, CellInput> Legend { get; init; } = [];
+    public int AsciiOriginX { get; init; } = 0;
+    public int AsciiOriginY { get; init; } = 0;
+    public BuildingPlacement[] Buildings { get; init; } = [];
     public Expectation[] Assertions { get; init; } = [];
 
     public void Validate()
@@ -87,6 +141,8 @@ public sealed record Scenario
         Check.That(float.IsFinite(SecondsPerStep) && SecondsPerStep is > 0 and <= 0.2f, "secondsPerStep must be > 0 and <= 0.2.");
         Check.That(Elements is { Length: >= 2 and <= 1024 }, "Provide 2..1024 fixture elements.");
         Check.That(Fill != null && Boundary != null && Regions != null && Assertions != null, "Scenario collections and cell inputs cannot be null.");
+        Check.That(PointsRegions != null && PolygonRegions != null && AsciiMap != null && Legend != null && Buildings != null,
+            "Geometry collections cannot be null.");
         var names = new HashSet<string>(StringComparer.Ordinal);
         var ids = new HashSet<int>();
         foreach (var e in Elements)
@@ -112,6 +168,50 @@ public sealed record Scenario
             Check.That(region != null && region.Width > 0 && region.Height > 0 && region.X >= 0 && region.Y >= 0 &&
                 region.X <= Width - region.Width && region.Y <= Height - region.Height, "Region is outside the world.");
             ValidateCell(region.Cell);
+        }
+        foreach (var points in PointsRegions)
+        {
+            Check.That(points != null && points.Points != null, "PointsRegion cannot be null.");
+            foreach (var pt in points.Points)
+            {
+                Check.That(pt != null && pt.X >= 0 && pt.Y >= 0 && pt.X < Width && pt.Y < Height, $"Point ({pt?.X},{pt?.Y}) is outside the world.");
+            }
+            ValidateCell(points.Cell);
+        }
+        foreach (var poly in PolygonRegions)
+        {
+            Check.That(poly != null && poly.Vertices != null && poly.Vertices.Length >= 3, "PolygonRegion requires at least 3 vertices.");
+            foreach (var v in poly.Vertices)
+            {
+                Check.That(v != null && v.X >= 0 && v.Y >= 0 && v.X < Width && v.Y < Height, $"Vertex ({v?.X},{v?.Y}) is outside the world.");
+            }
+            ValidateCell(poly.Cell);
+        }
+        if (AsciiMap.Length > 0)
+        {
+            Check.That(AsciiMap.Length <= Height, "AsciiMap row count exceeds world height.");
+            for (int r = 0; r < AsciiMap.Length; r++)
+            {
+                string row = AsciiMap[r];
+                Check.That(row.Length <= Width, $"AsciiMap row {r} length exceeds world width.");
+                foreach (char c in row)
+                {
+                    string key = c.ToString();
+                    Check.That(Legend.ContainsKey(key), $"AsciiMap character '{key}' not found in Legend.");
+                }
+            }
+            foreach (var entry in Legend)
+            {
+                ValidateCell(entry.Value);
+            }
+        }
+        foreach (var b in Buildings)
+        {
+            Check.That(b != null && !string.IsNullOrWhiteSpace(b.BuildingDef), "BuildingDef cannot be empty.");
+            Check.That(b.X >= 0 && b.Y >= 0 && b.X < Width && b.Y < Height, $"Building ({b.X},{b.Y}) is outside the world.");
+            Check.That(float.IsFinite(b.Mass) && b.Mass >= 0, "Building mass must be finite and nonnegative.");
+            Check.That(float.IsFinite(b.Temperature) && b.Temperature > 0, "Building temperature must be positive.");
+            ElementIndex(b.Element);
         }
         foreach (var assertion in Assertions) assertion.Validate(Width, Height);
     }
