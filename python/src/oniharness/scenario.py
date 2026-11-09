@@ -50,6 +50,61 @@ class Region:
 
 
 @dataclass(frozen=True)
+class Point2D:
+    x: int
+    y: int
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"x": self.x, "y": self.y}
+
+
+@dataclass(frozen=True)
+class PointsRegion:
+    points: tuple[Point2D, ...]
+    cell: Cell = field(default_factory=Cell)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "points": [p.to_dict() for p in self.points],
+            "cell": self.cell.to_dict(),
+        }
+
+
+@dataclass(frozen=True)
+class PolygonRegion:
+    vertices: tuple[Point2D, ...]
+    cell: Cell = field(default_factory=Cell)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "vertices": [v.to_dict() for v in self.vertices],
+            "cell": self.cell.to_dict(),
+        }
+
+
+@dataclass(frozen=True)
+class BuildingPlacement:
+    building_def: str
+    x: int
+    y: int
+    element: str = "Granite"
+    temperature: float = 300
+    mass: float = 200
+    is_open: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "buildingDef": self.building_def,
+            "x": self.x,
+            "y": self.y,
+            "element": self.element,
+            "temperature": self.temperature,
+            "mass": self.mass,
+            "isOpen": self.is_open,
+        }
+
+
+@dataclass(frozen=True)
 class Expectation:
     """One native assertion. Also decorates a scenario factory without wrapping it."""
 
@@ -58,6 +113,10 @@ class Expectation:
     max: float | None = None
     x: int | None = None
     y: int | None = None
+    x2: int | None = None
+    y2: int | None = None
+    width: int | None = None
+    height: int | None = None
     absolute_tolerance: float | None = None
 
     def __post_init__(self) -> None:
@@ -65,6 +124,9 @@ class Expectation:
             tolerance = self.absolute_tolerance
             if tolerance is None or not math.isfinite(tolerance) or tolerance < 0:
                 raise ValueError("Mass tolerance must be finite and nonnegative")
+        elif self.kind in ("communicatingVesselsEquilibrium", "columnHeightNear"):
+            if self.x is None or self.x2 is None:
+                raise ValueError("Communicating vessels equilibrium requires x and x2")
         else:
             if self.min is None and self.max is None:
                 raise ValueError("Provide min and/or max for a range expectation")
@@ -83,6 +145,10 @@ class Expectation:
             "max": self.max,
             "x": self.x,
             "y": self.y,
+            "x2": self.x2,
+            "y2": self.y2,
+            "width": self.width,
+            "height": self.height,
             "absoluteTolerance": self.absolute_tolerance,
         }
         return {key: value for key, value in values.items() if value is not None}
@@ -118,6 +184,24 @@ class _Expect:
     ) -> Expectation:
         return Expectation("cellTemperature", min=min, max=max, x=x, y=y)
 
+    @staticmethod
+    def region_mass(
+        x: int, y: int, width: int = 1, height: int = 1, *, min: float | None = None, max: float | None = None
+    ) -> Expectation:
+        return Expectation("regionMass", min=min, max=max, x=x, y=y, width=width, height=height)
+
+    @staticmethod
+    def column_liquid_level(
+        x: int, *, min: float | None = None, max: float | None = None
+    ) -> Expectation:
+        return Expectation("columnLiquidLevel", min=min, max=max, x=x, y=0)
+
+    @staticmethod
+    def communicating_vessels_equilibrium(
+        x1: int, x2: int, tolerance: float = 1.0
+    ) -> Expectation:
+        return Expectation("communicatingVesselsEquilibrium", x=x1, x2=x2, absolute_tolerance=tolerance)
+
 
 expect = _Expect()
 
@@ -139,6 +223,13 @@ class Scenario:
     fill: Cell = field(default_factory=Cell)
     boundary: Cell = field(default_factory=lambda: Cell("Unobtanium", mass=20000))
     regions: tuple[Region, ...] = ()
+    points_regions: tuple[PointsRegion, ...] = ()
+    polygon_regions: tuple[PolygonRegion, ...] = ()
+    ascii_map: tuple[str, ...] = ()
+    legend: Mapping[str, Cell] | None = None
+    ascii_origin_x: int = 0
+    ascii_origin_y: int = 0
+    buildings: tuple[BuildingPlacement, ...] = ()
     assertions: tuple[Expectation, ...] = ()
     elements: tuple[Mapping[str, Any], ...] | None = None
 
@@ -156,6 +247,13 @@ class Scenario:
             "fill": self.fill.to_dict(),
             "boundary": self.boundary.to_dict(),
             "regions": [region.to_dict() for region in self.regions],
+            "pointsRegions": [pr.to_dict() for pr in self.points_regions],
+            "polygonRegions": [pr.to_dict() for pr in self.polygon_regions],
+            "asciiMap": list(self.ascii_map),
+            "legend": {k: v.to_dict() for k, v in self.legend.items()} if self.legend else {},
+            "asciiOriginX": self.ascii_origin_x,
+            "asciiOriginY": self.ascii_origin_y,
+            "buildings": [b.to_dict() for b in self.buildings],
             "assertions": [assertion.to_dict() for assertion in self.assertions],
         }
         if self.name is not None:

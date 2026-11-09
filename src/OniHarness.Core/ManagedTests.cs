@@ -36,6 +36,15 @@ public sealed class HarnessContext(string? gamePath)
         InvokedGameInstallation = game;
         return result;
     }
+
+    /// <summary>Loads an external Mod assembly into an isolated scope for testing its types and methods.</summary>
+    public Assembly LoadModAssembly(string modAssemblyPath)
+    {
+        string fullPath = Path.GetFullPath(modAssemblyPath);
+        Check.That(File.Exists(fullPath), $"Mod assembly not found: {fullPath}");
+        var scope = new HarnessAssemblyScope(fullPath);
+        return scope.LoadFromAssemblyPath(fullPath);
+    }
 }
 
 public sealed record ManagedTestCase(string Name, int Token);

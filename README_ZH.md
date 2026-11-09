@@ -100,6 +100,12 @@ py -3 -m venv .venv-runtime
 ./.venv-runtime/bin/python scripts/verify.py --game-path /path/to/OxygenNotIncluded
 ```
 
+Windows PowerShell：
+
+```powershell
+./.venv-runtime/Scripts/python.exe scripts/verify.py --game-path C:\path\to\OxygenNotIncluded
+```
+
 用自己的 runner 提供本地游戏安装，公共 CI 不需要、也不会下载游戏文件。
 
 ## 配套技能与连续实验

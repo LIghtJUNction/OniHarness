@@ -59,4 +59,14 @@ public static class ExampleTests
         Check.That(final.Temperature[final.Index(7, 8)] < 400 && final.Temperature[final.Index(8, 8)] > 300,
             "Custom material did not transfer heat through the native solver.");
     }
+
+    [HarnessTest]
+    public static void DynamicModAssemblyLoadingTest(HarnessContext context)
+    {
+        string? modDll = Environment.GetEnvironmentVariable("ONIHARNESS_TEST_MOD_DLL");
+        if (string.IsNullOrEmpty(modDll)) return;
+        var assembly = context.LoadModAssembly(modDll);
+        Check.That(assembly != null, "Failed to dynamically load target mod assembly.");
+        Check.That(assembly.GetTypes().Length > 0, "Target mod assembly contains no types.");
+    }
 }
