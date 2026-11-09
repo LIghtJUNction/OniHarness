@@ -16,6 +16,9 @@ import time
 import unittest
 from unittest.mock import patch
 
+if sys.platform != "linux":
+    raise unittest.SkipTest("The Linux instance controller requires fcntl, /proc, Unix sockets and CPU affinity")
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import instance_controller as control
@@ -431,6 +434,7 @@ class ControllerTests(unittest.TestCase):
         status = {"pid": 123, "runNonce": "new-native"}
         stale = {"pid": 555, "children": {"guest1": {"pid": 888, "exitCode": 0}}}
         with patch.object(self.controller, "live", return_value=False), \
+             patch.object(control.shutil, "which", return_value="/fixture/steam"), \
              patch.object(self.controller, "chain_identity", return_value=None), \
              patch.object(control, "game_processes", return_value={}), \
              patch.object(self.controller, "preflight"), \

@@ -51,7 +51,9 @@ Every scenario and repetition starts in a fresh process. Timeouts terminate the 
 
 ## Quick start
 
-Requirements: .NET SDK 10. A local Linux ONI installation is required only for game-dependent paths.
+Requirements: .NET SDK 10. A local Linux ONI installation is needed only for tests
+that use game files. Public CI and the framework's own behavioral tests need no game.
+For the full verification suite, also prepare Python as described in [Verification](#verification).
 
 ```bash
 git clone https://github.com/LIghtJUNction/OniHarness.git
@@ -265,13 +267,55 @@ Exit codes:
 | `1` | failure, timeout, crash or unsupported adapter |
 | `2` | command, configuration or discovery error |
 
-Game-free verification and package checks:
+## Verification
+
+The full game-free verification requires .NET SDK 10 and Python 3.10+ with
+`venv` and `pip` (CI uses Python 3.14). It includes real TOON decoding assertions,
+so `scripts/requirements-runtime.txt` is required even without `--game-path`.
+Create an isolated environment from the repository root and use its interpreter
+for both installation and verification. No environment activation is needed.
+
+Linux/macOS:
 
 ```bash
-python3 scripts/verify.py
+python3 -m venv .venv-runtime
+./.venv-runtime/bin/python -m pip install --require-hashes -r scripts/requirements-runtime.txt
+./.venv-runtime/bin/python scripts/verify.py
 ```
 
-Add `--game-path PATH` to run real native scenarios three times and all C# examples. Public CI runs only the game-free portion and never downloads or uploads game files.
+Windows PowerShell:
+
+```powershell
+py -3 -m venv .venv-runtime
+./.venv-runtime/Scripts/python.exe -m pip install --require-hashes -r scripts/requirements-runtime.txt
+./.venv-runtime/Scripts/python.exe scripts/verify.py
+```
+
+The requirements file fixes the decoder version and wheel hash. Verification
+uses the selected Python for every Python child check, fails with setup guidance
+if the decoder is missing, and never installs packages automatically. CI creates
+the same isolated environment and runs the same hash-checked installation and
+game-free verification on Linux and Windows.
+
+Both platforms run all TOON, portable argument/network, and managed-host checks.
+The experimental [Linux instance controller](docs/multi-instance.md), `/proc`
+sampling, POSIX installation views, and offline file-ownership checks report
+explicit platform skips on Windows; Linux runs all of their assertions. These
+skips do not apply to missing Python dependencies or failed TOON decoding.
+
+On a supported local game installation, use the same environment to additionally
+run real native scenarios three times, all C# examples, and the physics playground:
+
+```bash
+./.venv-runtime/bin/python scripts/verify.py --game-path /path/to/OxygenNotIncluded
+```
+
+```powershell
+./.venv-runtime/Scripts/python.exe scripts/verify.py --game-path C:\path\to\OxygenNotIncluded
+```
+
+Use your own runner with your local installation for game-dependent tests; public
+CI runs only the game-free portion and never downloads or uploads game files.
 
 Test assemblies are trusted code, not a security sandbox. Process isolation contains crashes and timeouts; it does not remove file or network access.
 

@@ -271,5 +271,6 @@ If authentication is enabled, put the token in `ONIHARNESS_MCP_TOKEN`; it is
 sent only to the configured loopback HTTP endpoint, without proxies or redirects,
 and is never written to receipts. Do not put secrets in explicit tool arguments.
 Failed observations and child batches fail visibly rather than publishing a new
-successful frame. `python3 scripts/verify.py` exercises the client without ONI;
+successful frame. The [isolated verification workflow](../README.md#verification)
+exercises the client without ONI;
 real-game compatibility/performance evidence must be collected separately.

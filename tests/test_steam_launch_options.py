@@ -70,6 +70,7 @@ class OfflineSteamOptionsTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     options.edit_bytes(value, "WRAPPER")
 
+    @unittest.skipUnless(os.name == "posix", "Offline edits require POSIX ownership, permissions and directory fsync")
     def test_atomic_edit_refuses_live_steam_and_preserves_mode(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "localconfig.vdf"
@@ -88,6 +89,7 @@ class OfflineSteamOptionsTests(unittest.TestCase):
             self.assertEqual(path.read_bytes(), changed)
             self.assertEqual(path.stat().st_mode & 0o777, 0o640)
 
+    @unittest.skipUnless(os.name == "posix", "Offline edits require POSIX ownership, permissions and directory fsync")
     def test_hash_precondition_and_small_private_journal(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "localconfig.vdf"
@@ -116,6 +118,7 @@ class OfflineSteamOptionsTests(unittest.TestCase):
                 options.main()
             self.assertEqual(path.read_bytes(), original)
 
+    @unittest.skipUnless(os.name == "posix", "Offline edits require POSIX ownership, permissions and directory fsync")
     def test_concurrent_config_change_and_parent_symlink_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "localconfig.vdf"
@@ -133,6 +136,7 @@ class OfflineSteamOptionsTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 options.read_config(link)
 
+    @unittest.skipUnless(os.name == "posix", "Offline configuration reads require POSIX file ownership")
     def test_plan_is_read_only_and_does_not_emit_private_values(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "localconfig.vdf"
