@@ -10,6 +10,7 @@ fixture results below. CLI/Core v0.1.0 package behavior is unchanged.
 
 | Capability | v0.1.0 status | Evidence established |
 | --- | --- | --- |
+| Scoped Cargo library tests | Supported in source checkout | Selected Mod native test functions, incremental build reuse and separate timing |
 | Framework and worker lifecycle | Supported; game-free CI | Assertions, async failure, timeout, abrupt exit, output bounds, discovery isolation |
 | Native gas/liquid/solid simulation | Verified Linux x64, build 744825 | Small real-library fixture scenarios |
 | Cell replacement / energy input | Supported | C# example tests with the installed native library |

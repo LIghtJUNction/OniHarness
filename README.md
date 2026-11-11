@@ -355,3 +355,15 @@ OniHarness is independently usable and is also linked as an OniMods submodule.
 OniHarness is an unofficial community project, not affiliated with Klei or Unity. No game DLLs, assets, decompiled implementation source or colony saves are included.
 
 Original framework code uses [AUL 1.0-draft.1](LICENSE), a custom license that is not OSI-approved. Read [LICENSING.md](LICENSING.md) and [UPSTREAM.toml](UPSTREAM.toml). ONI, Unity, .NET and tested mods remain separate works under their own terms.
+
+## Scoped native mod iteration
+
+Run selected production-library tests with Cargo incremental builds. Select a test prefix, a suite from `oniharness.json`, or a changed file mapped by that manifest. Reports separate build, discovery, execution and total wall time.
+
+```sh
+python3 scripts/test_mod.py --native-project /path/to/Mod/native --suite liquid-unit --report artifacts/liquid-unit.json
+python3 scripts/test_mod.py --native-project /path/to/Mod/native --filter liquid_transport::tests::waterfall
+python3 scripts/verify.py --only local
+```
+
+Every requested filter must match a test. Empty selections, failures, timeouts and ignored-only runs fail. `--all` explicitly selects the full native library suite. Managed mod tests require `--assembly`, support `--filter`, and accept `--skip-build` to reuse the selected DLL. The `--headless` option reports unsupported execution through this entry point. Use the explicit runtime workflow for game acceptance.

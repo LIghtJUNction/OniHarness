@@ -30,8 +30,13 @@ def require_runtime_dependencies():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--game-path")
+    parser.add_argument("--only", choices=["local"], help="Run scoped local test-runner checks")
     args = parser.parse_args()
     require_runtime_dependencies()
+    if args.only == "local":
+        run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_local*.py")
+        run("git", "diff", "--check")
+        return
     run("dotnet", "build", "OniHarness.slnx", "-c", "Release", "--nologo")
     run("dotnet", "run", "--project", "tests/OniHarness.Tests", "-c", "Release", "--no-build")
     run(sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_verify.py")

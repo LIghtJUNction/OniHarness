@@ -138,3 +138,20 @@ Python 依赖。回放来自物理测试数据，不是游戏画面，也不代�
 OniHarness 是独立 Git 项目，通过 submodule 接入 OniMods，其他作者可以单独使用。
 原创新代码沿用 **AUL 1.0-draft.1**；它是自定义许可证，尚未获 OSI 批准。
 游戏文件和第三方软件保持各自条款，不随项目分发。
+
+## 局部迭代
+
+使用已有 Cargo 测试执行 Mod 原生库的局部回归。Cargo 每次核对源码和依赖，复用增量产物。默认使用开发配置，按测试名或 `oniharness.json` 中的测试组选择范围。
+
+```sh
+python3 scripts/test_mod.py --native-project /path/to/Mod/native --suite liquid-unit --report artifacts/liquid-unit.json
+python3 scripts/test_mod.py --native-project /path/to/Mod/native --changed-file src/liquid_transport.rs
+python3 scripts/test_mod.py --native-project /path/to/Mod/native --filter liquid_transport::tests::waterfall
+python3 scripts/verify.py --only local
+```
+
+`--changed-file` 相对于 Cargo.toml，通过测试组的 `paths` 匹配。多个测试组取并集，各组排除项仅作用于该组。未匹配的文件、测试名或空选择报错。使用 `--all` 显式运行该原生库全部测试。
+
+报告分别记录 `buildSeconds`、`discoverySeconds`、`executionSeconds` 和 `totalSeconds`，并记录可执行文件哈希、选中的测试、Cargo 产物复用状态、超时和失败。此路线的证据为 `native-library-tests`。
+
+托管测试必须指定相关测试程序集，`--filter` 选择用例，`--skip-build` 复用指定的 Mod DLL。`test_mod.py --headless` 会明确报告当前入口缺少实机执行能力。需要实机时使用独立 runtime 工作流。

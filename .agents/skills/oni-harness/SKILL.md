@@ -11,6 +11,14 @@ OniHarness 提供双重测试路线：
 
 ---
 
+## 快速反馈默认入口
+
+每次迭代优先选择相关局部测试，复用构建产物。修改原生库时运行 `scripts/test_mod.py --native-project PATH --suite NAME` 或 `--filter PREFIX`，按文件选择使用 `--changed-file src/file.rs` 和项目内 `oniharness.json`。默认开发配置支持增量编译。只有需要更大覆盖时才扩大测试组。
+
+工具自身的局部执行器变更使用 `python3 scripts/verify.py --only local`。报告分别给出构建、发现和执行时间，记录实际选中用例与产物复用状态。测试筛选不能静默漏掉未匹配名称。
+
+托管入口必须指定 `--assembly`。`--skip-build` 用于复用明确选定的 DLL。`test_mod.py --headless` 当前会明确失败，原入口曾经只检查 DLL 就返回 runtimeVerified=true，该行为已修正。实机工作流只在用户授权需要实机时使用。
+
 ## 核心工作流与命令速查
 
 所有命令统一在 `tools/OniHarness` 根目录下运行（或通过环境配置 `ONIHARNESS_GAME_PATH`）。
@@ -48,9 +56,9 @@ python3 scripts/test_mod.py --mod /path/to/MyMod \
   --game-path /path/to/OxygenNotIncluded \
   --report artifacts/mod-test-report.json
 
-# 结合无头模式进行真实游戏环境验证
-python3 scripts/test_mod.py --mod /path/to/MyMod \
-  --headless --game-path /path/to/OxygenNotIncluded
+# 托管局部筛选并复用已构建 DLL
+python3 scripts/test_mod.py --mod /path/to/MyMod.dll \
+  --assembly /path/to/MyMod.Tests.dll --filter RelevantCase --skip-build
 ```
 
 在 C# 测试用例中动态加载 Mod 程序集：
