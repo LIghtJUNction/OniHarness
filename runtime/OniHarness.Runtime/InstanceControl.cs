@@ -327,24 +327,7 @@ namespace OniHarness.Runtime
         {
             if (Interlocked.Exchange(ref assembliesDirty, 0) != 0)
             {
-                bool changed = false;
-                foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
-                {
-                    if (assembly.IsDynamic) continue;
-                    string key = assembly.FullName;
-                    if (assemblyReceipts.ContainsKey(key)) continue;
-                    string location = null, source = null, hash = null, hashError = null;
-                    try
-                    {
-                        location = assembly.Location;
-                        source = assembly.CodeBase;
-                        if (!string.IsNullOrEmpty(location) && File.Exists(location)) hash = Hash(location);
-                        else hashError = "Assembly has no readable file location.";
-                    }
-                    catch (Exception ex) { hashError = ex.Message; }
-                    assemblyReceipts[key] = new { name = assembly.GetName().Name, fullName = key, location, codeBase = source, sha256 = hash, error = hashError };
-                    changed = true;
-                }
+                bool changed = LoadedAssemblyReceipts.Refresh(assemblyReceipts);
                 if (changed)
                     Atomic("instance-assemblies.json", new
                     {

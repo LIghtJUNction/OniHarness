@@ -124,6 +124,11 @@ colony; check OniMcp's launch state before testing. File control is local and
 single-controller; use a distinct `--output` directory per session. The default
 is `artifacts/runtime`. All later commands must use the same output directory.
 
+Loaded managed assemblies are recorded separately in `assemblies.json`, with
+their in-game `Assembly.Location`, SHA256 and any read error. `status.json`
+names that receipt in `assemblyReceipt`. Hashes are captured when an assembly
+is first observed; compare them with the candidate before claiming it is loaded.
+
 For an installed mod's explicit diagnostic option, use repeatable long arguments,
 for example `launch --game-arg=--cycletrim-perf-probe`. Short Steam/Unity options
 and reserved `--oniharness-*` controls cannot be overridden this way. This does

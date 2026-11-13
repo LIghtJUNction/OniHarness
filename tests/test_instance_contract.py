@@ -226,6 +226,7 @@ class InstanceContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="oniharness-instance-contract-") as temporary:
             directory = pathlib.Path(temporary)
             shutil.copyfile(SOURCE, directory / "InstanceControl.cs")
+            shutil.copyfile(SOURCE.with_name("LoadedAssemblyReceipts.cs"), directory / "LoadedAssemblyReceipts.cs")
             (directory / "Doubles.cs").write_text(DOUBLES)
             (directory / "Contract.csproj").write_text(
                 '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>'

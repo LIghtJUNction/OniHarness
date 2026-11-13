@@ -82,6 +82,8 @@ namespace OniHarness.Runtime
         private Game lastGame;
         private bool? lastPaused;
         private int lastDuplicants;
+        private readonly Dictionary<string, object> assemblyReceipts = new Dictionary<string, object>(StringComparer.Ordinal);
+        private int assembliesDirty = 1;
 
         public void Initialize(string directory, bool requireHeadless)
         {
@@ -97,8 +99,12 @@ namespace OniHarness.Runtime
             try { controls = new ControlFileSignals(root); }
             catch (Exception ex) { Debug.LogWarning("[OniHarness] Control notifications unavailable; keeping 1s polling: " + ex.Message); }
             Camera.onPostRender += RecordCameraRender;
+            AppDomain.CurrentDomain.AssemblyLoad += AssemblyLoaded;
             Debug.Log("[OniHarness] Runtime companion active; headless=" + headless + "; simulation remains native.");
         }
+
+        private void AssemblyLoaded(object sender, AssemblyLoadEventArgs args)
+            => System.Threading.Interlocked.Exchange(ref assembliesDirty, 1);
 
         private void RecordCameraRender(Camera camera)
         {
@@ -192,6 +198,17 @@ namespace OniHarness.Runtime
             }
             try
             {
+                if (System.Threading.Interlocked.Exchange(ref assembliesDirty, 0) != 0
+                    && LoadedAssemblyReceipts.Refresh(assemblyReceipts))
+                {
+                    string receipt = Path.Combine(root, "assemblies.json"), temporary = receipt + ".tmp";
+                    File.WriteAllText(temporary, JsonConvert.SerializeObject(new {
+                        schema = 1, capturedAt = System.DateTime.UtcNow.ToString("o"), pid,
+                        assemblies = assemblyReceipts.Values
+                    }));
+                    if (File.Exists(receipt)) File.Replace(temporary, receipt, null);
+                    else File.Move(temporary, receipt);
+                }
                 var clock = GameClock.Instance;
                 var status = new
                 {
@@ -209,6 +226,7 @@ namespace OniHarness.Runtime
                     disabledVideoPlayers = HeadlessVisuals.DisabledVideoPlayers,
                     skippedTimelapseCaptures = HeadlessVisuals.SkippedTimelapseCaptures,
                     controlNotifications = controls != null,
+                    assemblyReceipt = "assemblies.json",
                     mode,
                     renderInterval = OnDemandRendering.renderFrameInterval,
                     updateRate,
@@ -246,6 +264,7 @@ namespace OniHarness.Runtime
         private void OnDestroy()
         {
             if (root == null) return;
+            AppDomain.CurrentDomain.AssemblyLoad -= AssemblyLoaded;
             controls?.Dispose();
             Camera.onPostRender -= RecordCameraRender;
             OnDemandRendering.renderFrameInterval = originalInterval;
