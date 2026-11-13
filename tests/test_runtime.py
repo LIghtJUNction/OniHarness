@@ -12,13 +12,33 @@ import io
 from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from runtime import observe, main, read_status, retire_owned_lease, validate_headless, wait_ready
+from runtime import observe, main, read_status, retire_owned_lease, validate_headless, wait_ready, monitor_running_window
 from runtime_mcp import Client, decode_text, payload
 from install_runtime import enable_entry, require_idle_mod_loader, restore_mod_loader_state
 from measure_steps import require_log_markers
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_running_window_rejects_early_pause_despite_prior_progress(self):
+        resumed = datetime(2026, 11, 14, tzinfo=timezone.utc)
+        status = {"pid": 42, "gameLoaded": True, "paused": True,
+                  "simulationSeconds": 123.375, "capturedAt": "2026-11-14T00:00:01Z"}
+        with patch("runtime.read_status", return_value=status), patch("runtime.time.monotonic", side_effect=[0, .05]):
+            with self.assertRaisesRegex(RuntimeError, "paused before"):
+                monitor_running_window("unused", 1, 42, resumed)
+
+    def test_running_window_ignores_old_pause_but_requires_fresh_running_data(self):
+        resumed = datetime(2026, 11, 14, tzinfo=timezone.utc)
+        old = {"pid": 42, "gameLoaded": True, "paused": True, "capturedAt": "2026-11-13T23:59:59Z"}
+        new = dict(old, paused=False, capturedAt="2026-11-14T00:00:01Z")
+        with patch("runtime.read_status", side_effect=[old, new]), \
+                patch("runtime.time.monotonic", side_effect=[0, .05, .15, .3]), patch("runtime.time.sleep"):
+            self.assertEqual(monitor_running_window("unused", .25, 42, resumed), 1)
+        with patch("runtime.read_status", return_value=old), \
+                patch("runtime.time.monotonic", side_effect=[0, .05, .3]), patch("runtime.time.sleep"):
+            with self.assertRaisesRegex(RuntimeError, "No fresh"):
+                monitor_running_window("unused", .25, 42, resumed)
+
     def test_completed_step_retires_only_its_own_lease(self):
         with tempfile.TemporaryDirectory() as temp:
             lease = Path(temp) / "run-lease.json"
@@ -120,6 +140,18 @@ class RuntimeTests(unittest.TestCase):
                     patch.object(sys, "argv", ["runtime.py", "launch", "--dry-run", "--game-arg=" + argument]):
                 with self.assertRaisesRegex(ValueError, "reserved"):
                     main()
+
+    def test_native_engine_timing_collection_is_explicit(self):
+        for enabled in (False, True):
+            arguments = ["runtime.py", "launch", "--dry-run"]
+            if enabled:
+                arguments.append("--engine-timings")
+            with patch("runtime.game_pids", return_value=[]), patch("runtime.shutil.which", return_value="/fake/steam"), \
+                    patch.object(sys, "argv", arguments), contextlib.redirect_stdout(io.StringIO()) as out:
+                main()
+            command = json.loads(out.getvalue())["command"]
+            self.assertEqual("--oniharness-engine-timings" in command, enabled)
+            self.assertIn("-nographics", command)
 
     def test_launch_defaults_to_no_window_and_no_graphics_without_fallback(self):
         with patch("runtime.game_pids", return_value=[]), patch("runtime.shutil.which", return_value="/fake/steam"), \

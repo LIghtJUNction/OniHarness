@@ -67,6 +67,26 @@ def wait_ready(directory, timeout):
     raise RuntimeError("Startup did not verify: " + last_error + "; inspect player.log and steam-launch.log. No fallback or restart was performed.")
 
 
+def monitor_running_window(directory, seconds, expected_pid, resumed_utc):
+    """Reject an interrupted run even if it advanced briefly before pausing."""
+    deadline = time.monotonic() + seconds
+    observed = set()
+    while time.monotonic() < deadline:
+        status = read_status(directory)
+        if status["pid"] != expected_pid or not status.get("gameLoaded"):
+            raise RuntimeError("Game changed or unloaded during the running window")
+        captured = datetime.fromisoformat(status["capturedAt"].replace("Z", "+00:00"))
+        # The first file can still describe the pause preceding the resume RPC.
+        if captured >= resumed_utc:
+            if status.get("paused") is not False:
+                raise RuntimeError("Game paused before the requested running window completed")
+            observed.add(status["capturedAt"])
+        time.sleep(.25)
+    if not observed:
+        raise RuntimeError("No fresh unpaused telemetry during the running window")
+    return len(observed)
+
+
 def observe(client, directory, intent="Read-only observation", bounds=None):
     client.call("game_control", {"domain": "speed", "action": "pause"})
     status = client.call("game_control", {"domain": "speed", "action": "time"})
@@ -108,6 +128,8 @@ def launch(args):
         raise RuntimeError("Steam client is required; direct game execution is never used")
     control = args.output.resolve()
     command = [steam, "-applaunch", "457140", "--oniharness-control", str(control), "-logFile", str(control / "player.log")]
+    if args.engine_timings:
+        command.append("--oniharness-engine-timings")
     for argument in args.game_arg:
         if not re.fullmatch(r"--[A-Za-z][A-Za-z0-9_-]*(?:=[^\s\x00]+)?", argument) or argument.startswith("--oniharness-"):
             raise ValueError("Pass a long mod option such as --cycletrim-perf-probe; Steam, Unity and harness launch controls are reserved")
@@ -149,6 +171,7 @@ def main():
     p.add_argument("--update-rate", type=int, choices=range(15, 241), default=30, metavar="15..240")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--game-arg", action="append", default=[], help="Forward a long mod option; repeat as --game-arg=--mod-option")
+    p.add_argument("--engine-timings", action="store_true", help="Opt in to native Unity frame/memory counters; unavailable metrics remain explicit")
     p = commands.add_parser("render", help="Change companion render policy, without changing simulation speed")
     p.add_argument("mode", choices=["normal", "reduced"])
     p.add_argument("--interval", type=int, choices=range(1, 121), default=60, metavar="1..120")
@@ -260,7 +283,8 @@ def main():
             if running.get("isPaused") is not False:
                 raise RuntimeError("Native game pause remains. Inspect its cause; only for a known test pause use --release-native-pause.")
             resumed_at = time.monotonic()
-            time.sleep(args.seconds)
+            running_observations = monitor_running_window(
+                args.output, args.seconds, status["pid"], datetime.now(timezone.utc))
         finally:
             pause_requested = time.monotonic()
             client.call("game_control", {"domain": "speed", "action": "pause"})
@@ -288,6 +312,7 @@ def main():
         record = {"capturedAt": datetime.now(timezone.utc).isoformat(), "tool": "bounded_smoke_step",
                   "wallSeconds": args.seconds, "speed": args.speed, "before": before, "after": after,
                   "simulationSecondsAdvanced": advanced, "releasedNativePause": args.release_native_pause}
+        record["runningTelemetryObservations"] = running_observations
         record["timings"] = {"initialPauseSeconds": lease_written - started,
                              "leaseAcknowledgmentSeconds": armed - lease_written,
                              "resumeSeconds": resumed_at - armed,

@@ -84,6 +84,18 @@ namespace OniHarness.Runtime
         private int lastDuplicants;
         private readonly Dictionary<string, object> assemblyReceipts = new Dictionary<string, object>(StringComparer.Ordinal);
         private int assembliesDirty = 1;
+        private EngineTimingProbe engineTimings;
+
+        private int? NativePauseCount()
+        {
+            try
+            {
+                var screen = SpeedControlScreen.Instance;
+                var field = AccessTools.Field(typeof(SpeedControlScreen), "pauseCount");
+                return screen == null || field == null ? (int?)null : (int)field.GetValue(screen);
+            }
+            catch { return null; }
+        }
 
         public void Initialize(string directory, bool requireHeadless)
         {
@@ -96,6 +108,8 @@ namespace OniHarness.Runtime
             originalTargetRate = Application.targetFrameRate;
             originalVSync = QualitySettings.vSyncCount;
             Application.runInBackground = true;
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "--oniharness-engine-timings") >= 0)
+                engineTimings = new EngineTimingProbe();
             try { controls = new ControlFileSignals(root); }
             catch (Exception ex) { Debug.LogWarning("[OniHarness] Control notifications unavailable; keeping 1s polling: " + ex.Message); }
             Camera.onPostRender += RecordCameraRender;
@@ -129,6 +143,7 @@ namespace OniHarness.Runtime
                 deadlinePauseScreen = SpeedControlScreen.Instance;
             }
             if (root == null) return;
+            engineTimings?.Capture();
             bool changed = controls != null && controls.Consume();
             bool? pausedNow = SpeedControlScreen.Instance == null ? (bool?)null : SpeedControlScreen.Instance.IsPaused;
             bool transition = !statusWritten || !ReferenceEquals(lastGame, Game.Instance) ||
@@ -239,6 +254,9 @@ namespace OniHarness.Runtime
                     runInBackground = Application.runInBackground,
                     gameLoaded = Game.Instance != null,
                     paused = SpeedControlScreen.Instance == null ? (bool?)null : SpeedControlScreen.Instance.IsPaused,
+                    nativePauseCount = NativePauseCount(),
+                    deadlinePauseOwned = deadlinePauseScreen != null && ReferenceEquals(deadlinePauseScreen, SpeedControlScreen.Instance),
+                    engineTimings = engineTimings?.Snapshot(),
                     simulationSeconds = clock == null ? (double?)null : clock.GetTime(),
                     duplicants = Components.LiveMinionIdentities.Count,
                     leaseId = lease?.Id,
@@ -263,6 +281,7 @@ namespace OniHarness.Runtime
 
         private void OnDestroy()
         {
+            engineTimings?.Dispose();
             if (root == null) return;
             AppDomain.CurrentDomain.AssemblyLoad -= AssemblyLoaded;
             controls?.Dispose();

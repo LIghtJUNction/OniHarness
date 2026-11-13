@@ -50,6 +50,35 @@ copy, native clock/duplicant movement, a killed-client stop/recovery test, the
 browser's exact-map check and a short paused ABBA rendering comparison. Those
 observations apply to that installation/workload, not every colony or mod.
 
+## Optional engine timing and pause diagnostics
+
+`runtime.py launch --graphics normal --engine-timings` explicitly enables native
+Unity profiler counters in the companion. Without this flag the recorders are
+not created. The companion adds `engineTimings` to `status.json`: counter names,
+units, sample counts and last completed values, plus FrameTiming data when the
+installed player exposes it. Counters can overlap; do not add their times.
+Unavailable GPU timing stays null rather than being presented as zero GPU work.
+Recorder resources are released when the component is destroyed. Counter errors
+are isolated from the stop-deadline controller and reported in the snapshot.
+
+`nativePauseCount` is a read-only diagnostic of the pinned game's counted pause
+field (null if unavailable); `deadlinePauseOwned` identifies a hold acquired by
+this companion. These fields do not release other pause owners.
+
+Bounded smoke steps now inspect fresh status during the running window. An
+observed early pause, unload, changed PID, stale status or absence of fresh
+running observations fails the run even if its clock advanced briefly. The
+original stop deadline and acknowledgment guard remain unchanged. This is not a
+benchmark acceptance gate: camera stability, paging, warmup, control latency and
+actual simulation progress still need separate checks.
+
+The timing probe compiles against the installed Unity reference and its CLI is
+host-tested. Game acceptance of these new fields/counters is still pending; the
+operator stopped further launches on 2026-11-14.
+
+References: [Unity ProfilerRecorder](https://docs.unity3d.com/6000.0/Documentation/ScriptReference/Unity.Profiling.ProfilerRecorder.html),
+[Frame timing counter definitions](https://docs.unity3d.com/6000.0/Documentation/Manual/frame-timing-manager-counter-reference.html).
+
 ## Rendering and observation are separate options
 
 | Option | What it does |
