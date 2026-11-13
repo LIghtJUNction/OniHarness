@@ -72,6 +72,13 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(decode_text('{"isPaused":true,"simulationSeconds":2.5}'),
                          {"isPaused": True, "simulationSeconds": 2.5})
 
+    def test_nested_toon_camera_view_decodes_when_first_key_has_no_inline_value(self):
+        text = "position:\n  x: 45.5\n  y: 81.03\n  z: -100\northographicSize: 24.41\nscreen:\n  width: 1225\n  height: 1526"
+        result = decode_text(text)
+        self.assertEqual(result["position"], {"x": 45.5, "y": 81.03, "z": -100})
+        self.assertEqual(result["orthographicSize"], 24.41)
+        self.assertEqual(result["screen"], {"width": 1225, "height": 1526})
+
     def test_toon_batch_child_uses_the_same_decoder(self):
         client = object.__new__(Client)
         client.call = lambda *args: {"executed": 1, "failed": 0,
