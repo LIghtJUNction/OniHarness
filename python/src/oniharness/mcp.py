@@ -28,13 +28,33 @@ T = TypeVar("T")
 
 PROTOCOL = "2025-11-25"
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
+MAX_ERROR_BYTES = 64 * 1024
 TOON_HEADER = re.compile(
     r'^(?:(?:"(?:[^"\\]|\\.)*"|[^\W\d][\w.-]*)(?:\[\d+[,\t]?\])?(?:\{[^{}\n]*\})?|\[\d+[,\t]?\](?:\{[^{}\n]*\})?):(?:[ \t\r\n]|$)'
 )
 
 
 class McpError(RuntimeError):
-    """Transport, protocol, tool or pause-verification failure."""
+    """MCP failure with optional transport/protocol details for recovery.
+
+    The data field carries server details such as reasonCode and retryable.
+    Requests are never replayed automatically, including after a lost session.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        method: str | None = None,
+        http_status: int | None = None,
+        code: int | None = None,
+        data: Any = None,
+    ):
+        super().__init__(message)
+        self.method = method
+        self.http_status = http_status
+        self.code = code
+        self.data = data
 
 
 def _decode(text: str) -> Any:
@@ -107,6 +127,26 @@ class McpClient:
         self._opener = urllib.request.build_opener(
             urllib.request.ProxyHandler({}), _NoRedirect()
         )
+        self._closed = False
+        self.server_info: dict[str, Any] = {}
+        self.capabilities: dict[str, Any] = {}
+        self._connect()
+
+    def _connect(self) -> None:
+        try:
+            self._initialize()
+        except Exception as failure:
+            try:
+                self.close()
+            except McpError as cleanup:
+                if hasattr(failure, "add_note"):
+                    failure.add_note(f"MCP session cleanup also failed: {cleanup}")
+            finally:
+                self.session = None
+                self._closed = True
+            raise
+
+    def _initialize(self) -> None:
         initialized = self.request(
             "initialize",
             {
@@ -119,7 +159,96 @@ class McpClient:
         if version not in (PROTOCOL, "2025-06-18", "2025-03-26"):
             raise McpError(f"Unsupported MCP protocol version: {version}")
         self.protocol = version
+        server_info = initialized.get("serverInfo", {})
+        capabilities = initialized.get("capabilities", {})
+        if not isinstance(server_info, dict) or not isinstance(capabilities, dict):
+            raise McpError("Invalid MCP serverInfo or capabilities", method="initialize")
+        self.server_info = dict(server_info)
+        self.capabilities = dict(capabilities)
         self.request("notifications/initialized", notification=True)
+
+    def __enter__(self) -> McpClient:
+        if self._closed:
+            raise McpError("MCP client is closed; call reconnect() first")
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
+        try:
+            self.close()
+        except McpError as error:
+            if exc is None:
+                raise
+            if hasattr(exc, "add_note"):
+                exc.add_note(f"MCP session cleanup also failed: {error}")
+
+    def _headers(self) -> dict[str, str]:
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+            "Mcp-Protocol-Version": self.protocol,
+        }
+        if self.session:
+            headers["Mcp-Session-Id"] = self.session
+        if self._token:
+            headers["Authorization"] = "Bearer " + self._token
+        return headers
+
+    def close(self) -> None:
+        """Release this server session. Repeated close calls are harmless."""
+        if self._closed:
+            return
+        if self.session:
+            request = urllib.request.Request(
+                self.url, headers=self._headers(), method="DELETE"
+            )
+            try:
+                with self._opener.open(request, timeout=self.timeout):
+                    pass
+            except urllib.error.HTTPError as error:
+                if error.code not in (404, 405):
+                    raise self._http_error("DELETE", error) from error
+                error.close()
+            except OSError as error:
+                raise McpError(
+                    f"MCP session cleanup failed: {error}", method="DELETE"
+                ) from error
+        self.session = None
+        self._closed = True
+
+    def reconnect(self) -> None:
+        """Release the old session and negotiate a new one; replay no calls."""
+        self.close()
+        self.protocol = PROTOCOL
+        self.server_info = {}
+        self.capabilities = {}
+        self._closed = False
+        self._connect()
+
+    @staticmethod
+    def _http_error(method: str, error: urllib.error.HTTPError) -> McpError:
+        detail: dict[str, Any] = {}
+        try:
+            body = error.read(MAX_ERROR_BYTES + 1)
+            if len(body) <= MAX_ERROR_BYTES:
+                decoded = json.loads(body)
+                if isinstance(decoded, dict) and isinstance(decoded.get("error"), dict):
+                    detail = decoded["error"]
+        except (OSError, ValueError):
+            pass
+        finally:
+            error.close()
+        message = f"MCP request {method} failed: HTTP {error.code}"
+        if isinstance(detail.get("message"), str):
+            message += ": " + detail["message"]
+        if error.code == 404:
+            message += ". The session or endpoint is unavailable; call reconnect() after checking the server."
+        return McpError(
+            message,
+            method=method,
+            http_status=error.code,
+            code=detail.get("code"),
+            data=detail.get("data"),
+        )
 
     @staticmethod
     def _timeout(value: float) -> float:
@@ -135,6 +264,8 @@ class McpClient:
         notification: bool = False,
         timeout: float | None = None,
     ) -> dict[str, Any]:
+        if self._closed:
+            raise McpError("MCP client is closed; call reconnect() first", method=method)
         self._sequence += 1
         request_id = self._sequence
         message: dict[str, Any] = {"jsonrpc": "2.0", "method": method}
@@ -142,17 +273,8 @@ class McpClient:
             message["id"] = request_id
         if params is not None:
             message["params"] = dict(params)
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream",
-            "Mcp-Protocol-Version": self.protocol,
-        }
-        if self.session:
-            headers["Mcp-Session-Id"] = self.session
-        if self._token:
-            headers["Authorization"] = "Bearer " + self._token
         request = urllib.request.Request(
-            self.url, json.dumps(message, allow_nan=False).encode(), headers
+            self.url, json.dumps(message, allow_nan=False).encode(), self._headers()
         )
         try:
             with self._opener.open(
@@ -170,10 +292,9 @@ class McpClient:
                         raise McpError("MCP response exceeded 8 MiB")
                     value = json.loads(body)
         except urllib.error.HTTPError as error:
-            error.close()
-            raise McpError(f"MCP request {method} failed: HTTP {error.code}") from error
+            raise self._http_error(method, error) from error
         except (OSError, ValueError) as error:
-            raise McpError(f"MCP request {method} failed: {error}") from error
+            raise McpError(f"MCP request {method} failed: {error}", method=method) from error
         if (
             not isinstance(value, dict)
             or value.get("id") != request_id
@@ -181,7 +302,15 @@ class McpClient:
         ):
             raise McpError("Invalid MCP response or mismatched request ID")
         if "error" in value:
-            raise McpError("MCP error: " + str(value["error"]))
+            detail = value["error"]
+            if not isinstance(detail, dict):
+                raise McpError("Invalid MCP error object", method=method)
+            raise McpError(
+                "MCP error: " + str(detail.get("message", detail)),
+                method=method,
+                code=detail.get("code"),
+                data=detail.get("data"),
+            )
         if not isinstance(value.get("result"), dict):
             raise McpError("MCP response has no result object")
         return value["result"]

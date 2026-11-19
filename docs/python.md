@@ -148,14 +148,15 @@ print(contract["found"])  # 仅元数据存在性，不代表执行成功
 import os
 from oniharness import Game, McpClient
 
-client = McpClient(
+with McpClient(
     "http://127.0.0.1:8788/mcp/",
     token=os.environ.get("ONIHARNESS_MCP_TOKEN"),
-)
-print([tool["name"] for tool in client.list_tools()])
-observation = Game(client).observe()
-print(observation["map"]["text"])
-print(observation["dupes"])
+) as client:
+    print(client.server_info)
+    print([tool["name"] for tool in client.list_tools()])
+    observation = Game(client).observe()
+    print(observation["map"]["text"])
+    print(observation["dupes"])
 ```
 
 `observe()` 先暂停并读回确认，再读取摄像机附近的小范围原始文本地图。
@@ -171,6 +172,16 @@ print(observation["dupes"])
 遵守暂停、观察、计划、执行、短时运行、暂停、验证的流程。
 客户端只允许 HTTP 回环地址，禁用代理和重定向；支持 JSON、SSE 和 TOON。
 工具或协议失败抛出 `McpError`。不要并发共享同一个客户端。
+
+`with McpClient(...)` 离开代码块时释放服务端会话，长期复用的客户端也可以显式
+`close()`。关闭后调用会提示先重连；重复关闭安全。服务端重启或会话过期后，
+调用 `reconnect()` 重新协商，再根据当前游戏状态决定下一步；客户端不会自动重放
+之前的工具调用。握手中途失败也会尝试释放已分配的会话，并保留原始错误。
+服务端用 HTTP 405 表明不支持会话删除时，客户端完成本地关闭，由服务端管理会话回收。`server_info`、`capabilities` 保留本次握手的服务端信息。
+
+HTTP 和 JSON-RPC 失败保留 `McpError.method`、`http_status`、`code`、`data`。
+例如服务繁忙时可以读取 `error.data["reasonCode"]` 和 `retryable` 判断原因，
+错误文本也包含服务端的具体说明。错误响应读取上限为 64 KiB。
 
 ### 暂停装饰器
 
