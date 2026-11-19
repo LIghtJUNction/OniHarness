@@ -17,8 +17,11 @@ from datetime import datetime, timezone
 from functools import wraps
 from importlib import import_module
 from pathlib import Path
+from types import TracebackType
 from typing import Any, ParamSpec, TypeVar
 from uuid import uuid4
+
+from typing_extensions import Self
 
 from ._version import __version__
 from .notebook import MAX_FRAME_BYTES, GameFrame
@@ -167,12 +170,17 @@ class McpClient:
         self.capabilities = dict(capabilities)
         self.request("notifications/initialized", notification=True)
 
-    def __enter__(self) -> McpClient:
+    def __enter__(self) -> Self:
         if self._closed:
             raise McpError("MCP client is closed; call reconnect() first")
         return self
 
-    def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         try:
             self.close()
         except McpError as error:

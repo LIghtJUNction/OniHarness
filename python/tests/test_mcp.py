@@ -215,9 +215,11 @@ class McpTests(unittest.TestCase):
             self.assertEqual(failure.method, "tools/list")
             self.assertEqual(failure.code, -32000)
             self.assertEqual(failure.data, {"reasonCode": "main_thread_busy", "retryable": True})
-            with patch.object(mcp, "MAX_ERROR_BYTES", 8):
-                with self.assertRaisesRegex(McpError, "HTTP 503") as bounded:
-                    client.list_tools()
+            with (
+                patch.object(mcp, "MAX_ERROR_BYTES", 8),
+                self.assertRaisesRegex(McpError, "HTTP 503") as bounded,
+            ):
+                client.list_tools()
             self.assertIsNone(bounded.exception.data)
 
     def test_json_rpc_errors_keep_method_code_and_data(self):
@@ -245,9 +247,11 @@ class McpTests(unittest.TestCase):
             handler.end_headers()
 
         with endpoint(respond) as (url, _):
-            with self.assertRaisesRegex(ValueError, "body failed") as raised:
-                with McpClient(url):
-                    raise ValueError("body failed")
+            with (
+                self.assertRaisesRegex(ValueError, "body failed") as raised,
+                McpClient(url),
+            ):
+                raise ValueError("body failed")
             if hasattr(raised.exception, "add_note"):
                 self.assertTrue(any("cleanup also failed" in note
                                     for note in raised.exception.__notes__))
