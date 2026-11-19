@@ -16,6 +16,7 @@ import uuid
 
 from install_runtime import game_pids
 from runtime_mcp import Client, atomic_json
+from runtime_startup import diagnose_startup
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -64,7 +65,13 @@ def wait_ready(directory, timeout):
         except (OSError, ValueError, KeyError, RuntimeError) as ex:
             last_error = str(ex)
         time.sleep(.25)
-    raise RuntimeError("Startup did not verify: " + last_error + "; inspect player.log and steam-launch.log. No fallback or restart was performed.")
+    diagnostic = ""
+    if not (Path(directory) / "status.json").exists():
+        try:
+            diagnostic = " Startup diagnostics: " + json.dumps(diagnose_startup(directory), ensure_ascii=False)
+        except Exception as error:
+            diagnostic = " Startup diagnostics unavailable: " + type(error).__name__
+    raise RuntimeError("Startup did not verify: " + last_error + "; inspect player.log and steam-launch.log. No fallback or restart was performed." + diagnostic)
 
 
 def monitor_running_window(directory, seconds, expected_pid, resumed_utc):
